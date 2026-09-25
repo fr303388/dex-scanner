@@ -1,0 +1,842 @@
+{
+  "positions": [
+    {
+      "symbol": "GGS/SOL",
+      "buy_price": 0.0001069,
+      "buy_time": "09-26 02:54",
+      "buy_ts": 1790362461.9897115,
+      "entry_liq": 30415,
+      "invested": 100,
+      "shares": 935453.6950420955,
+      "url": "https://dexscreener.com/solana/6fblnqtyv3eexb2bqrqjcar3wqi2p3rsrcchbxtny39e",
+      "buy_score": 4,
+      "address": "GZHVA9LL2WUbWnnT88KGCqtEpYeTTLzX59WvLtGpump",
+      "chain": "solana",
+      "image": "https://cdn.dexscreener.com/cms/images/M5T9PC1C6OIYduUE?width=800&height=800&quality=95&format=auto",
+      "current_price": 0.0001173,
+      "current_value": 109.7287184284378,
+      "pnl": 9.728718428437801,
+      "pnl_pct": 9.7
+    }
+  ],
+  "trades": [
+    {
+      "time": "09-26 01:07",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001866,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:07",
+      "symbol": "GONSA/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001174,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=5.5"
+    },
+    {
+      "time": "09-26 01:08",
+      "symbol": "GONSA/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001174,
+      "sell_price": 9.101e-05,
+      "pnl": -22.48,
+      "pnl_pct": -22.5,
+      "reason": "停損-22.5%"
+    },
+    {
+      "time": "09-26 01:08",
+      "symbol": "GONSA/SOL",
+      "action": "BUY",
+      "buy_price": 9.101e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:08",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001866,
+      "sell_price": 0.0002384,
+      "pnl": 27.76,
+      "pnl_pct": 27.8,
+      "reason": "停利+27.8%"
+    },
+    {
+      "time": "09-26 01:08",
+      "symbol": "GONSA/SOL",
+      "action": "SELL",
+      "buy_price": 9.101e-05,
+      "sell_price": 0.0001505,
+      "pnl": 65.37,
+      "pnl_pct": 65.4,
+      "reason": "停利+65.4%"
+    },
+    {
+      "time": "09-26 01:08",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002384,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:08",
+      "symbol": "GONSA/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001505,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:09",
+      "symbol": "GONSA/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001505,
+      "sell_price": 8.261e-05,
+      "pnl": -45.11,
+      "pnl_pct": -45.1,
+      "reason": "停損-45.1%"
+    },
+    {
+      "time": "09-26 01:09",
+      "symbol": "GONSA/SOL",
+      "action": "BUY",
+      "buy_price": 8.261e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:10",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002384,
+      "sell_price": 0.000181,
+      "pnl": -24.08,
+      "pnl_pct": -24.1,
+      "reason": "停損-24.1%"
+    },
+    {
+      "time": "09-26 01:10",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.000181,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:10",
+      "symbol": "GONSA/SOL",
+      "action": "SELL",
+      "buy_price": 8.261e-05,
+      "sell_price": 4.948e-05,
+      "pnl": -40.1,
+      "pnl_pct": -40.1,
+      "reason": "停損-40.1%"
+    },
+    {
+      "time": "09-26 01:12",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.000181,
+      "sell_price": 0.0002272,
+      "pnl": 25.52,
+      "pnl_pct": 25.5,
+      "reason": "停利+25.5%"
+    },
+    {
+      "time": "09-26 01:12",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002272,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:14",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002272,
+      "sell_price": 0.0002742,
+      "pnl": 20.69,
+      "pnl_pct": 20.7,
+      "reason": "停利+20.7%"
+    },
+    {
+      "time": "09-26 01:14",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002742,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=6.0"
+    },
+    {
+      "time": "09-26 01:21",
+      "symbol": "BLUEPRINT/SOL",
+      "action": "BUY",
+      "buy_price": 7.206e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:21",
+      "symbol": "BLUEPRINT/SOL",
+      "action": "SELL",
+      "buy_price": 7.206e-05,
+      "sell_price": 0.0001053,
+      "pnl": 46.13,
+      "pnl_pct": 46.1,
+      "reason": "停利+46.1%"
+    },
+    {
+      "time": "09-26 01:22",
+      "symbol": "BLUEPRINT/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001119,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:23",
+      "symbol": "OnlyJeans/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001372,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:24",
+      "symbol": "BLUEPRINT/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001119,
+      "sell_price": 0.0001906,
+      "pnl": 70.33,
+      "pnl_pct": 70.3,
+      "reason": "停利+70.3%"
+    },
+    {
+      "time": "09-26 01:24",
+      "symbol": "SOLRISING/SOL",
+      "action": "BUY",
+      "buy_price": 8.336e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:25",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002742,
+      "sell_price": 0.0003316,
+      "pnl": 20.93,
+      "pnl_pct": 20.9,
+      "reason": "停利+20.9%"
+    },
+    {
+      "time": "09-26 01:25",
+      "symbol": "SOLRISING/SOL",
+      "action": "SELL",
+      "buy_price": 8.336e-05,
+      "sell_price": 0.0001985,
+      "pnl": 138.12,
+      "pnl_pct": 138.1,
+      "reason": "停利+138.1%"
+    },
+    {
+      "time": "09-26 01:26",
+      "symbol": "OnlyJeans/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001372,
+      "sell_price": 0.0001662,
+      "pnl": 21.14,
+      "pnl_pct": 21.1,
+      "reason": "停利+21.1%"
+    },
+    {
+      "time": "09-26 01:26",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0003513,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=5.0"
+    },
+    {
+      "time": "09-26 01:26",
+      "symbol": "OnlyJeans/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001646,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:26",
+      "symbol": "SOLRISING/SOL",
+      "action": "BUY",
+      "buy_price": 9.032e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:27",
+      "symbol": "SOLRISING/SOL",
+      "action": "SELL",
+      "buy_price": 9.032e-05,
+      "sell_price": 0.000125,
+      "pnl": 38.4,
+      "pnl_pct": 38.4,
+      "reason": "停利+38.4%"
+    },
+    {
+      "time": "09-26 01:30",
+      "symbol": "OnlyJeans/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001646,
+      "sell_price": 0.0001976,
+      "pnl": 20.05,
+      "pnl_pct": 20.0,
+      "reason": "停利+20.0%"
+    },
+    {
+      "time": "09-26 01:31",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0003513,
+      "sell_price": 0.0002613,
+      "pnl": -25.62,
+      "pnl_pct": -25.6,
+      "reason": "停損-25.6%"
+    },
+    {
+      "time": "09-26 01:31",
+      "symbol": "OnlyJeans/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002083,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:31",
+      "symbol": "THICC/SOL",
+      "action": "BUY",
+      "buy_price": 8.111e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4"
+    },
+    {
+      "time": "09-26 01:31",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002382,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:32",
+      "symbol": "THICC/SOL",
+      "action": "SELL",
+      "buy_price": 8.111e-05,
+      "sell_price": 0.0001113,
+      "pnl": 37.22,
+      "pnl_pct": 37.2,
+      "reason": "停利+37.2%"
+    },
+    {
+      "time": "09-26 01:32",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002382,
+      "sell_price": 0.0003199,
+      "pnl": 34.3,
+      "pnl_pct": 34.3,
+      "reason": "停利+34.3%"
+    },
+    {
+      "time": "09-26 01:33",
+      "symbol": "OnlyJeans/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002083,
+      "sell_price": 0.0001618,
+      "pnl": -22.32,
+      "pnl_pct": -22.3,
+      "reason": "停損-22.3%"
+    },
+    {
+      "time": "09-26 01:33",
+      "symbol": "JEANWORK/SOL",
+      "action": "BUY",
+      "buy_price": 0.0003132,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=5.0"
+    },
+    {
+      "time": "09-26 01:33",
+      "symbol": "THICC/SOL",
+      "action": "BUY",
+      "buy_price": 0.000118,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4"
+    },
+    {
+      "time": "09-26 01:33",
+      "symbol": "THICC/SOL",
+      "action": "SELL",
+      "buy_price": 0.000118,
+      "sell_price": 9.302e-05,
+      "pnl": -21.17,
+      "pnl_pct": -21.2,
+      "reason": "停損-21.2%"
+    },
+    {
+      "time": "09-26 01:33",
+      "symbol": "OnlyJeans/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001718,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=7.0"
+    },
+    {
+      "time": "09-26 01:36",
+      "symbol": "SOLRISING/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001128,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=5.5"
+    },
+    {
+      "time": "09-26 01:36",
+      "symbol": "SHH/SOL",
+      "action": "BUY",
+      "buy_price": 7.389e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:37",
+      "symbol": "SOLRISING/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001128,
+      "sell_price": 0.0001633,
+      "pnl": 44.77,
+      "pnl_pct": 44.8,
+      "reason": "停利+44.8%"
+    },
+    {
+      "time": "09-26 01:37",
+      "symbol": "SHH/SOL",
+      "action": "SELL",
+      "buy_price": 7.389e-05,
+      "sell_price": 0.0001071,
+      "pnl": 44.95,
+      "pnl_pct": 44.9,
+      "reason": "停利+44.9%"
+    },
+    {
+      "time": "09-26 01:38",
+      "symbol": "SOLRISING/SOL",
+      "action": "BUY",
+      "buy_price": 9.504e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=5.5"
+    },
+    {
+      "time": "09-26 01:39",
+      "symbol": "SOLRISING/SOL",
+      "action": "SELL",
+      "buy_price": 9.504e-05,
+      "sell_price": 3.713e-05,
+      "pnl": -60.93,
+      "pnl_pct": -60.9,
+      "reason": "停損-60.9%"
+    },
+    {
+      "time": "09-26 01:39",
+      "symbol": "SHH/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001208,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:39",
+      "symbol": "SOLRISING/SOL",
+      "action": "BUY",
+      "buy_price": 8.368e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "推薦score=4.5"
+    },
+    {
+      "time": "09-26 01:40",
+      "symbol": "SOLRISING/SOL",
+      "action": "SELL",
+      "buy_price": 8.368e-05,
+      "sell_price": 6.185e-06,
+      "pnl": -92.61,
+      "pnl_pct": -92.6,
+      "reason": "停損-92.6%"
+    },
+    {
+      "time": "09-26 01:43",
+      "symbol": "OnlyJeans/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001718,
+      "sell_price": 0.0002254,
+      "pnl": 31.2,
+      "pnl_pct": 31.2,
+      "reason": "停利+31.2%"
+    },
+    {
+      "time": "09-26 01:43",
+      "symbol": "OnlyPump/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001655,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=7.0"
+    },
+    {
+      "time": "09-26 01:43",
+      "symbol": "OnlyJeans/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002415,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=6.0"
+    },
+    {
+      "time": "09-26 01:45",
+      "symbol": "OnlyPump/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001655,
+      "sell_price": 0.0002022,
+      "pnl": 22.18,
+      "pnl_pct": 22.2,
+      "reason": "停利+22.2%"
+    },
+    {
+      "time": "09-26 01:45",
+      "symbol": "OnlyPump/SOL",
+      "action": "BUY",
+      "buy_price": 0.0002108,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=7.0"
+    },
+    {
+      "time": "09-26 01:46",
+      "symbol": "OnlyJeans/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002415,
+      "sell_price": 0.0001869,
+      "pnl": -22.61,
+      "pnl_pct": -22.6,
+      "reason": "停損-22.6%"
+    },
+    {
+      "time": "09-26 01:46",
+      "symbol": "PUMPCAT/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001788,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=7.0"
+    },
+    {
+      "time": "09-26 01:47",
+      "symbol": "SHH/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001208,
+      "sell_price": 9.411e-05,
+      "pnl": -22.09,
+      "pnl_pct": -22.1,
+      "reason": "停損-22.1%"
+    },
+    {
+      "time": "09-26 01:47",
+      "symbol": "PUMPCAT/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001788,
+      "sell_price": 0.0001283,
+      "pnl": -28.24,
+      "pnl_pct": -28.2,
+      "reason": "停損-28.2%"
+    },
+    {
+      "time": "09-26 01:48",
+      "symbol": "OnlyPump/SOL",
+      "action": "SELL",
+      "buy_price": 0.0002108,
+      "sell_price": 0.0001614,
+      "pnl": -23.43,
+      "pnl_pct": -23.4,
+      "reason": "停損-23.4%"
+    },
+    {
+      "time": "09-26 01:50",
+      "symbol": "LESTER/SOL",
+      "action": "BUY",
+      "buy_price": 0.00013,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4.5"
+    },
+    {
+      "time": "09-26 01:51",
+      "symbol": "LESTER/SOL",
+      "action": "SELL",
+      "buy_price": 0.00013,
+      "sell_price": 0.0001755,
+      "pnl": 35.0,
+      "pnl_pct": 35.0,
+      "reason": "停利+35.0%"
+    },
+    {
+      "time": "09-26 01:51",
+      "symbol": "JEANWORK/SOL",
+      "action": "SELL",
+      "buy_price": 0.0003132,
+      "sell_price": 0.0002626,
+      "pnl": -16.16,
+      "pnl_pct": -16.2,
+      "reason": "停損-16.2%"
+    },
+    {
+      "time": "09-26 01:53",
+      "symbol": "GoWifHat/SOL",
+      "action": "BUY",
+      "buy_price": 8.101e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4.5"
+    },
+    {
+      "time": "09-26 01:53",
+      "symbol": "GoWifHat/SOL",
+      "action": "SELL",
+      "buy_price": 8.101e-05,
+      "sell_price": 6.907e-05,
+      "pnl": -14.74,
+      "pnl_pct": -14.7,
+      "reason": "停損-14.7%"
+    },
+    {
+      "time": "09-26 01:53",
+      "symbol": "THICC/SOL",
+      "action": "BUY",
+      "buy_price": 0.000123,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4.5"
+    },
+    {
+      "time": "09-26 01:54",
+      "symbol": "THICC/SOL",
+      "action": "SELL",
+      "buy_price": 0.000123,
+      "sell_price": 0.0001085,
+      "pnl": -11.79,
+      "pnl_pct": -11.8,
+      "reason": "停損-11.8%"
+    },
+    {
+      "time": "09-26 01:55",
+      "symbol": "PINKY/SOL",
+      "action": "BUY",
+      "buy_price": 8.495e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=5.5"
+    },
+    {
+      "time": "09-26 02:01",
+      "symbol": "FOMIE/SOL",
+      "action": "BUY",
+      "buy_price": 5.176e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4.5"
+    },
+    {
+      "time": "09-26 02:01",
+      "symbol": "FOMIE/SOL",
+      "action": "SELL",
+      "buy_price": 5.176e-05,
+      "sell_price": 4.255e-05,
+      "pnl": -17.79,
+      "pnl_pct": -17.8,
+      "reason": "停損-17.8%"
+    },
+    {
+      "time": "09-26 02:02",
+      "symbol": "LESTER/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001035,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=5.5"
+    },
+    {
+      "time": "09-26 02:03",
+      "symbol": "LESTER/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001035,
+      "sell_price": 8.92e-05,
+      "pnl": -13.82,
+      "pnl_pct": -13.8,
+      "reason": "停損-13.8%"
+    },
+    {
+      "time": "09-26 02:08",
+      "symbol": "ETCH/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001458,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4.5"
+    },
+    {
+      "time": "09-26 02:09",
+      "symbol": "ETCH/SOL",
+      "action": "SELL",
+      "buy_price": 0.0001458,
+      "sell_price": 0.0001005,
+      "pnl": -31.07,
+      "pnl_pct": -31.1,
+      "reason": "停損-31.1%"
+    },
+    {
+      "time": "09-26 02:19",
+      "symbol": "PINKY/SOL",
+      "action": "SELL",
+      "buy_price": 8.495e-05,
+      "sell_price": 9.741e-05,
+      "pnl": 14.67,
+      "pnl_pct": 14.7,
+      "reason": "下架死幣"
+    },
+    {
+      "time": "09-26 02:51",
+      "symbol": "GGS/SOL",
+      "action": "BUY",
+      "buy_price": 8.232e-05,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4"
+    },
+    {
+      "time": "09-26 02:53",
+      "symbol": "GGS/SOL",
+      "action": "SELL",
+      "buy_price": 8.232e-05,
+      "sell_price": 0.0001145,
+      "pnl": 39.09,
+      "pnl_pct": 39.1,
+      "reason": "停利+39.1%"
+    },
+    {
+      "time": "09-26 02:54",
+      "symbol": "GGS/SOL",
+      "action": "BUY",
+      "buy_price": 0.0001069,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "reason": "score=4"
+    }
+  ],
+  "capital": 1000,
+  "cash": 1141.636689767463,
+  "stats": {
+    "wins": 20,
+    "losses": 19,
+    "rugs": 1,
+    "win_amount": 797.82,
+    "loss_amount": -556.16,
+    "total_sells": 39,
+    "unique_bought": 15
+  },
+  "total_value": 109.7287184284378,
+  "total_invested": 100,
+  "total_pnl": 251.36540819590073,
+  "total_pnl_pct": 25.1,
+  "cooldown": {},
+  "blacklist": [
+    "OnlyJeans/SOL",
+    "SHH/SOL",
+    "PUMPCAT/SOL",
+    "OnlyPump/SOL",
+    "JEANWORK/SOL",
+    "GoWifHat/SOL",
+    "THICC/SOL",
+    "FOMIE/SOL",
+    "LESTER/SOL",
+    "ETCH/SOL"
+  ]
+}

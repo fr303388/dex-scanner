@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>迷因幣雷達</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0e14; color:#e6edf3; font-family:'Segoe UI',sans-serif; padding:16px; }
+h1 { font-size:20px; margin-bottom:12px; }
+h1 .refresh { font-size:11px; color:#8b949e; font-weight:normal; margin-left:12px; }
+.portfolio { background:linear-gradient(135deg,#1a2332,#0d1117); border:1px solid #30363d; border-radius:10px; padding:14px; margin-bottom:14px; }
+.portfolio h2 { font-size:14px; color:#f0b429; margin-bottom:10px; }
+.pf-summary { display:flex; gap:20px; margin-bottom:10px; flex-wrap:wrap; }
+.pf-stat { font-size:13px; }
+.pf-stat .lbl { color:#8b949e; font-size:11px; }
+.pf-stat .num { font-size:16px; font-weight:bold; }
+.pf-positions { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.pf-pos { background:#161b22; border-radius:8px; padding:10px; }
+.up { color:#3fb950; } .down { color:#f85149; }
+.rec-item { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid #21262d; }
+.rec-item:last-child { border:none; }
+.rec-rank { font-size:16px; font-weight:bold; width:24px; }
+.rec-name { font-weight:bold; min-width:80px; }
+.rec-score { background:#21262d; padding:2px 8px; border-radius:4px; font-size:11px; }
+.rec-reasons { font-size:11px; color:#8b949e; flex:1; }
+table { width:100%; border-collapse:collapse; background:#161b22; border-radius:8px; overflow:hidden; margin-top:10px; }
+th { background:#21262d; padding:8px 10px; text-align:left; font-size:11px; color:#8b949e; }
+td { padding:8px 10px; border-top:1px solid #21262d; font-size:12px; }
+a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<h1>🚀 迷因幣雷達 <span class="refresh" id="refresh">--</span></h1>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+  <span style="font-size:12px;color:#8b949e">私鑰:</span>
+  <input id="privKeyInput" type="password" placeholder="貼入 Solana 私鑰" style="background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px;width:200px">
+  <input id="pubKeyInput" type="text" placeholder="公開地址" style="background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px;width:180px">
+  <button onclick="savePrivKey()" style="background:#238636;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">儲存</button>
+  <span id="pkStatus" style="font-size:12px;color:#8b949e"></span>
+</div>
+
+<div class="portfolio">
+  <h2>💼 正式交易（鏈上真實下單 · Jupiter）</h2>
+  <div style="display:flex;gap:16px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:12px">
+    <div>地址: <b id="walletAddrDisplay" style="color:#58a6ff">--</b></div>
+    <div>餘額: <b id="walletBalDisplay" style="color:#3fb950">-- SOL</b></div>
+    <div>建議投入(80%÷10倉): <b id="suggestedAmount" style="color:#f0b429">-- SOL</b></div>
+    <div>每筆投入:
+      <input id="tradeAmountInput" type="number" value="0.1" min="0.01" step="0.01" style="background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:4px 8px;border-radius:4px;width:80px;font-size:12px"> SOL
+    </div>
+    <button onclick="saveTradeAmount()" style="background:#30363d;border:1px solid #58a6ff;color:#58a6ff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px">套用</button>
+  </div>
+  <div style="margin-bottom:10px">
+    <button id="tradeToggleBtn" onclick="toggleTrading()" style="background:#238636;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">▶ 開始交易</button>
+    <span id="tradeStatus" style="margin-left:10px;font-size:12px;color:#8b949e">未啟動</span>
+    <span id="tradeError" style="margin-left:10px;font-size:11px;color:#f85149"></span>
+  </div>
+  <div class="pf-summary">
+    <div class="pf-stat"><div class="lbl">投入</div><div class="num" id="pfInvested" style="font-size:14px">$0</div></div>
+    <div class="pf-stat"><div class="lbl">現值</div><div class="num" id="pfValue" style="font-size:14px">$0.00</div></div>
+    <div class="pf-stat"><div class="lbl">總盈虧</div><div class="num" id="pfPnl" style="font-size:14px">$0.00 (0%)</div></div>
+    <div class="pf-stat"><div class="lbl">錢包餘額</div><div class="num" id="pfEquity" style="font-size:14px">0.0000 SOL</div></div>
+  </div>
+  <div style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d;margin-top:6px">
+    📋 規則：每筆 SOL · 最多 10 倉 · 買入 score≥4 · 停利 +20% · 停損 -10% · 賣出冷卻 30 秒 · 虧錢賣出永久黑名單 · Rug(-70%)自動剔除
+  </div>
+  <div id="pfStats" style="display:flex;gap:16px;padding:8px 12px;font-size:13px;color:#8b949e;border-top:1px solid #21262d">
+    <span>勝 <b id="stWins" style="color:#3fb950">0</b></span>
+    <span>敗 <b id="stLosses" style="color:#f85149">0</b></span>
+    <span>被rug(-70%) <b id="stRugs" style="color:#f85149">0</b></span>
+    <span>MEME幣 <b id="stCoins" style="color:#58a6ff">0</b></span>
+    <span>勝率 <b id="stWinRate" style="color:#d29922">0%</b></span>
+    <span>賺 <b id="stWinAmt" style="color:#3fb950">$0</b></span>
+    <span>賠 <b id="stLossAmt" style="color:#f85149">$0</b></span>
+  </div>
+  <div class="pf-positions" id="pfPositions"></div>
+</div>
+
+<div style="margin-top:12px;border-top:1px solid #30363d;padding-top:8px;">
+  <div style="font-size:12px;color:#8b949e;margin-bottom:6px;">📋 正式買賣紀錄</div>
+  <div id="pfTrades" style="max-height:150px;overflow-y:auto;font-size:11px;"></div>
+</div>
+
+<!-- 模擬交易面板 -->
+<div class="portfolio" style="border-color:#3fb95044;margin-top:16px">
+  <h2 style="color:#3fb950">🤖 模擬交易（自動）</h2>
+  <div class="pf-summary">
+    <div class="pf-stat"><div class="lbl">投入</div><div class="num" id="simInvested" style="font-size:14px">$0</div></div>
+    <div class="pf-stat"><div class="lbl">現值</div><div class="num" id="simValue" style="font-size:14px">$0.00</div></div>
+    <div class="pf-stat"><div class="lbl">總盈虧</div><div class="num" id="simPnl" style="font-size:14px">$0.00 (0%)</div></div>
+    <div class="pf-stat"><div class="lbl">總資產($1000起)</div><div class="num" id="simEquity" style="font-size:14px">$1,000.00 (0%)</div></div>
+  </div>
+  <div style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d;margin-top:6px">
+    📋 規則：每筆 SOL · 最多 10 倉 · 買入 score≥4 · 停利 +20% · 停損 -10% · 賣出冷卻 30 秒 · 虧錢賣出永久黑名單 · Rug(-70%)自動剔除
+  </div>
+  <div id="simStats" style="display:flex;gap:16px;padding:8px 12px;font-size:13px;color:#8b949e;border-top:1px solid #21262d">
+    <span>勝 <b id="sWins" style="color:#3fb950">0</b></span>
+    <span>敗 <b id="sLosses" style="color:#f85149">0</b></span>
+    <span>被rug <b id="sRugs" style="color:#f85149">0</b></span>
+    <span>MEME幣 <b id="sCoins" style="color:#58a6ff">0</b></span>
+    <span>勝率 <b id="sWinRate" style="color:#d29922">0%</b></span>
+    <span>賺 <b id="sWinAmt" style="color:#3fb950">$0</b></span>
+    <span>賠 <b id="sLossAmt" style="color:#f85149">$0</b></span>
+  </div>
+  <div class="pf-positions" id="simPositions"></div>
+</div>
+
+<div style="margin-top:12px;border-top:1px solid #30363d;padding-top:8px;">
+  <div style="font-size:12px;color:#8b949e;margin-bottom:6px;">📋 模擬買賣紀錄</div>
+  <div id="simTrades" style="max-height:150px;overflow-y:auto;font-size:11px;"></div>
+</div>
+
+<div class="portfolio">
+  <h2 style="color:#58a6ff">🎯 即時推薦</h2>
+  <div id="recommend"></div>
+</div>
+
+<div class="portfolio" style="border-color:#f0b42944">
+  <h2 style="color:#f0b429">🌱 潛力新股</h2>
+  <div id="potential"></div>
+</div>
+
+<div class="portfolio" style="border-color:#a371f744">
+  <h2 style="color:#a371f7">📱 X 社群熱門</h2>
+  <div id="trending" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+</div>
+
+<div style="margin-top:16px;padding:12px;background:#161b22;border-radius:8px">
+  <h2 style="color:#f85149">💀 已下架/Rug 幣種</h2>
+  <div id="delisted" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+</div>
+
+<table>
+<thead><tr><th>評分</th><th>幣種</th><th>名稱</th><th>價格</th><th>1h</th><th>24h</th><th>量</th><th>分析</th></tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<audio id="alertSound" src="/alert.mp3"></audio>
+<script src="/app.js"></script>
+</body>
+</html>

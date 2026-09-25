@@ -1,0 +1,21 @@
+{
+  "positions": [],
+  "trades": [],
+  "capital": 1000,
+  "cash": 1000,
+  "cooldown": {},
+  "wallet_sol": 0,
+  "stats": {
+    "wins": 0,
+    "losses": 0,
+    "rugs": 0,
+    "win_amount": 0,
+    "loss_amount": 0,
+    "total_sells": 0,
+    "unique_bought": 0
+  },
+  "blacklist": [],
+  "trading_enabled": false,
+  "last_error": "未設定私鑰",
+  "trade_amount_sol": 0.1
+}

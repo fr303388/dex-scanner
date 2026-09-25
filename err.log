@@ -1,0 +1,23 @@
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:8770
+Press CTRL+C to quit
+127.0.0.1 - - [25/Sep/2026 09:33:19] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:19] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:19] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:20] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:25] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:30] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:51] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:51] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:51] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:51] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:51] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:33:55] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:00] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:03] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:05] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:20] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:20] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:20] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:25] "GET /api/dex HTTP/1.1" 200 -
+127.0.0.1 - - [25/Sep/2026 09:34:30] "GET /api/dex HTTP/1.1" 200 -
