@@ -88,11 +88,23 @@ async function loadSavedKey() {
 }
 
 function fmtPrice(p) {
+  p = Number(p) || 0;
   if (p >= 1000) return '$' + p.toFixed(0);
   if (p >= 100) return '$' + p.toFixed(2);
   if (p >= 1) return '$' + p.toFixed(4);
   if (p >= 0.0001) return '$' + p.toFixed(6);
-  return '$' + p.toFixed(8);
+  if (p > 0) return '$' + p.toPrecision(4);
+  return '$0';
+}
+
+
+function holdStr(ts) {
+  if (!ts) return '--';
+  const s = Math.floor(Date.now()/1000 - ts);
+  if (s < 60) return s + '秒';
+  const m = Math.floor(s/60);
+  if (m < 60) return m + '分' + (s%60) + '秒';
+  return Math.floor(m/60) + '時' + (m%60) + '分';
 }
 
 function renderPositions(positions, containerId) {
@@ -104,7 +116,7 @@ function renderPositions(positions, containerId) {
       <div style="flex:1">
         <div class="sym"><a href="${p.url}" target="_blank">${p.symbol}</a></div>
         <div class="detail" style="font-size:10px;color:#8b949e">買 ${fmtPrice(p.buy_price||0)} | 現 ${fmtPrice(p.current_price||0)}</div>
-        <div class="pnl ${pnlCls}" style="font-size:12px">${(p.pnl||0)>=0?'+':''}$${(p.pnl||0).toFixed(2)} (${(p.pnl_pct||0)>=0?'+':''}${(p.pnl_pct||0)}%)</div>
+        <div class="pnl ${pnlCls}" style="font-size:12px">${(p.pnl||0)>=0?'+':''}$${(p.pnl||0).toFixed(2)} (${(p.pnl_pct||0)>=0?'+':''}${(p.pnl_pct||0)}%) <span style="color:#666;font-size:10px">持 ${holdStr(p.buy_ts)}</span></div>
       </div>
     </div>`;
   }).join('') || '<div style="color:#666;font-size:12px;grid-column:1/-1">尚無持倉</div>';
@@ -262,18 +274,13 @@ async function load() {
       else if (crash <= -50) tag = '<span style="background:#d29922;color:#000;padding:1px 5px;border-radius:3px;font-size:10px">📉暴跌</span>';
       else if (crash <= -30) tag = '<span style="background:#8b949e;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px">💧淡出</span>';
       const link = t.url || (t.address ? `https://dexscreener.com/solana/${t.address}` : '#');
-      return `<div style="background:#da363311;border:1px solid #da363344;border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <div style="display:flex;align-items:center;gap:6px">
-            <img src="${t.image}" style="width:16px;height:16px;border-radius:50%" onerror="this.style.display='none'">
-            <a href="${link}" target="_blank" style="color:#f85149;font-weight:bold;text-decoration:none">💀 ${t.symbol}</a>
-            <span style="color:${crashColor};font-weight:bold">${crash}%</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${tag}
-            <span style="color:#666">${t.delist_time||""}</span>
-          </div>
-        </div>
+      const timeShort = (t.delist_time||"").slice(-5);
+      return `<div style="background:#da363311;border:1px solid #da363344;border-radius:6px;padding:4px 10px;display:flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap">
+        <img src="${t.image}" style="width:16px;height:16px;border-radius:50%" onerror="this.style.display='none'">
+        <a href="${link}" target="_blank" style="color:#f85149;font-weight:bold;text-decoration:none">💀 ${t.symbol}</a>
+        ${tag}
+        <span style="color:${crashColor};font-weight:bold">${crash}%</span>
+        <span style="color:#666;margin-left:auto">${timeShort}</span>
       </div>`;
     }).join('') || '<span style="color:#8b949e;font-size:12px">目前無下架幣種</span>';
 

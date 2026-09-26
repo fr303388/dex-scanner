@@ -151,6 +151,9 @@ def score_token(t):
     elif txns < 80: score -= 1; reasons.append("交易冷清")
     # 平均每筆金額過大 = 大戶自買自賣
     if avg_t > 5000 and txns < 100: score -= 2; reasons.append("大戶對敲洗盤")
+    buyers = t.get("buyers", 999)
+    if buyers > 0 and buyers < 10: score -= 3; reasons.append(f"人少{buyers}人刷單")
+    elif buyers > 0 and buyers < 30: score -= 1; reasons.append(f"買家少{buyers}人")
     # 買賣次數接近 50/50 且筆數少 = 典型對敲
     if txns > 0 and txns < 50:
         b_ratio = t.get("buy_ratio", 50)
@@ -187,11 +190,13 @@ def fetch_meme_coins():
                     except: buys=0
                     try: sells=p.get("txns",{}).get("h24",{}).get("sells",0)
                     except: sells=0
+                    try: buyers=p.get("buyers",0)
+                    except: buyers=0
                     if liq < 10000: continue
                     br = round(buys/(buys+sells)*100) if (buys+sells)>0 else 50
                     txns_24h = buys + sells
                     avg_trade = vol / txns_24h if txns_24h > 0 else 0
-                    t = {"symbol":f"{base}/SOL","name":name,"price":price,"change_1h":round(h1,1),"change_24h":round(h24,1),"volume_24h":round(vol),"liquidity":round(liq),"chain":chain,"url":p.get("url",""),"buy_ratio":br,"address":addr,"image":(p.get("info",{}) or {}).get("imageUrl",""),"txns_24h":txns_24h,"avg_trade":round(avg_trade)}
+                    t = {"symbol":f"{base}/SOL","name":name,"price":price,"change_1h":round(h1,1),"change_24h":round(h24,1),"volume_24h":round(vol),"liquidity":round(liq),"chain":chain,"url":p.get("url",""),"buy_ratio":br,"address":addr,"image":(p.get("info",{}) or {}).get("imageUrl",""),"txns_24h":txns_24h,"avg_trade":round(avg_trade),"buyers":buyers}
                     sc, rating, reasons = score_token(t)
                     t["score"], t["rating"], t["reasons"] = sc, rating, reasons
                     all_tokens.append(t); break
@@ -380,6 +385,7 @@ def fetch_meme_coins():
             cur_tok = next((t for t in all_tokens if t["symbol"] == pos["symbol"]), None)
             if cur_tok and entry_liq > 0 and cur_tok.get("liquidity",0) < entry_liq * 0.6:
                 sr = f"流動性逃離{RUG}"
+            elif held_secs > 600 and abs(pos["pnl_pct"]) < 0.5: sr = f"死幣不動{int(held_secs/60)}分"
             elif held_secs > PF_MAX_HOLD: sr = f"久未動{int(held_secs/60)}分鐘"
         if sr:
             spf["cash"] += pos["current_value"]
