@@ -52,6 +52,36 @@ def jupiter_swap(keypair, input_mint, output_mint, amount_lamports, slippage_bps
     except Exception as e:
         return False, str(e)
 
+
+def check_honeypot(token_mint, buy_sol=0.1):
+    """買入前測試：模擬賣出報價，如果回傳過低就是 honeypot"""
+    try:
+        # 先測買入報價 SOL->token
+        buy_q = requests.get("https://quote-api.jup.ag/v6/quote", params={
+            "inputMint": WsolMint, "outputMint": token_mint,
+            "amount": str(int(buy_sol * 1e9)), "slippageBps": "500",
+        }, timeout=10).json()
+        if "error" in buy_q or not buy_q.get("outAmount"):
+            return False, "買入報價失敗"
+        bought_tokens = int(buy_q["outAmount"])
+        if bought_tokens < 1000:
+            return False, "買入數量異常"
+        # 再測賣出報價 token->SOL
+        sell_q = requests.get("https://quote-api.jup.ag/v6/quote", params={
+            "inputMint": token_mint, "outputMint": WsolMint,
+            "amount": str(bought_tokens), "slippageBps": "500",
+        }, timeout=10).json()
+        if "error" in sell_q:
+            return False, f"賣出報價失敗(可能honeypot): {sell_q.get('error','?')}"
+        out_sol = int(sell_q.get("outAmount", 0))
+        in_sol = int(buy_sol * 1e9)
+        # 如果賣出回傳不到買入的10%，判定為 honeypot
+        if out_sol < in_sol * 0.1:
+            return False, f"HONEYPOT: 買{buy_sol}SOL→賣出僅{out_sol/1e9:.4f}SOL"
+        return True, f"安全(賣出回報{out_sol/in_sol*100:.0f}%)"
+    except Exception as e:
+        return False, f"檢查異常: {e}"
+
 def get_sol_balance(pubkey):
     try:
         r = requests.post("https://api.mainnet-beta.solana.com",
@@ -231,6 +261,7 @@ def fetch_meme_coins():
                         "buy_price": pos["buy_price"], "sell_price": pos["current_price"],
                         "pnl": round(pos["pnl"],2), "pnl_pct": pos["pnl_pct"],
                         "tx": sig, "fee_sol": fee_sol,
+                        "url": pos.get("url",""), "address": pos.get("address",""),
                         "reason": f"{sell_reason} 鏈上成交"
                     })
                 else:
@@ -258,6 +289,14 @@ def fetch_meme_coins():
                 print(f"[ONCHAIN BUY SKIP] {err}", flush=True)
                 pf["last_error"] = err
                 break
+            # HONEYPOT 檢查：先測試能不能賣出
+            safe, hmsg = check_honeypot(t["address"], PF_BUY_SOL)
+            if not safe:
+                print(f"[HONEYPOT SKIP] {t['symbol']} {hmsg}", flush=True)
+                pf["blacklist"].append(t["symbol"])
+                pf["last_error"] = f"跳過 {t['symbol']}: {hmsg}"
+                break
+            print(f"[HONEYPOT OK] {t['symbol']} {hmsg}", flush=True)
             # 真實鏈上買入
             sol_lamports = int(PF_BUY_SOL * 1e9)
             ok, sig = jupiter_swap(kp, WsolMint, t["address"], sol_lamports)
@@ -279,6 +318,7 @@ def fetch_meme_coins():
                     "time": now_str, "symbol": t["symbol"], "action": "BUY",
                     "buy_price": t["price"], "sell_price": 0, "pnl": 0, "pnl_pct": 0,
                     "tx": sig, "fee_sol": fee_sol,
+                    "url": t["url"], "address": t.get("address",""),
                     "reason": f"鏈上買入 {PF_BUY_SOL} SOL"
                 })
             else:
@@ -345,7 +385,8 @@ def fetch_meme_coins():
             spf["cash"] += pos["current_value"]
             spf["trades"].append({"time": now_str, "symbol": pos["symbol"], "action": "SELL",
                 "buy_price": pos["buy_price"], "sell_price": pos["current_price"],
-                "pnl": round(pos["pnl"],2), "pnl_pct": pos["pnl_pct"], "reason": sr})
+                "pnl": round(pos["pnl"],2), "pnl_pct": pos["pnl_pct"],
+                "url": pos.get("url",""), "address": pos.get("address",""), "reason": sr})
             spf["cooldown"][pos["symbol"]] = now_ts
             if pos["pnl"] < 0 and pos["symbol"] not in spf["blacklist"]:
                 spf["blacklist"].append(pos["symbol"])
@@ -362,7 +403,8 @@ def fetch_meme_coins():
             "image": t.get("image","")})
         spf["cash"] -= SIM_BUY
         spf["trades"].append({"time": now_str, "symbol": t["symbol"], "action": "BUY",
-            "buy_price": t["price"], "sell_price": 0, "pnl": 0, "pnl_pct": 0, "reason": f"score={t['score']}"})
+            "buy_price": t["price"], "sell_price": 0, "pnl": 0, "pnl_pct": 0,
+            "url": t["url"], "address": t.get("address",""), "reason": f"score={t['score']}"})
     spf["positions"] = kept
     ss = [t for t in spf["trades"] if t["action"]=="SELL"]
     sw = [t for t in ss if t["pnl"]>0]; sl = [t for t in ss if t["pnl"]<=0]
@@ -435,31 +477,56 @@ def fetch_meme_coins():
     rec_tracker = {k:v for k,v in rec_tracker.items() if k in rec_symbols}
     with open(REC_FILE, "w") as rf: json.dump(rec_tracker, rf, ensure_ascii=False)
 
-    # === 下架幣偵測 ===
+    # === 下架幣偵測（永久歷史） ===
     SEEN_FILE = os.path.join(os.path.dirname(__file__), "seen_tokens.json")
+    DELISTED_FILE = os.path.join(os.path.dirname(__file__), "delisted_history.json")
     try:
         with open(SEEN_FILE, "r", encoding="utf-8") as sf: prev_seen = json.load(sf)
     except: prev_seen = {}
+    try:
+        with open(DELISTED_FILE, "r", encoding="utf-8") as df: delisted_hist = json.load(df)
+    except: delisted_hist = []
     curr_symbols = {t["symbol"] for t in all_tokens}
-    delisted = []
-    for sym, info in prev_seen.items():
-        if sym not in curr_symbols:
-            delisted.append({"symbol": sym, "price": info.get("price",0), "image": info.get("image",""), "url": info.get("url",""), "last_score": info.get("score",0)})
-    # 更新 seen_tokens
+    # 更新 seen_tokens 並記錄最高價
     new_seen = {}
     for t in all_tokens:
-        new_seen[t["symbol"]] = {"price": t["price"], "image": t.get("image",""), "url": t["url"], "score": t["score"]}
+        old = prev_seen.get(t["symbol"], {})
+        peak = max(old.get("peak", t["price"]), t["price"])
+        new_seen[t["symbol"]] = {"price": t["price"], "peak": peak,
+            "image": t.get("image",""), "url": t["url"], "score": t["score"],
+            "address": t.get("address",""), "chain": t.get("chain","")}
+    # 消失的幣 → 存入永久歷史
+    existing_delisted = {d["symbol"] for d in delisted_hist}
+    for sym, info in prev_seen.items():
+        if sym not in curr_symbols and sym not in existing_delisted:
+            last_price = info.get("price", 0)
+            peak = info.get("peak", last_price)
+            crash_pct = round((last_price - peak) / peak * 100, 1) if peak > 0 else 0
+            delisted_hist.append({
+                "symbol": sym, "last_price": last_price, "peak_price": peak,
+                "crash_pct": crash_pct, "last_score": info.get("score", 0),
+                "image": info.get("image",""), "url": info.get("url",""),
+                "address": info.get("address",""), "delist_time": datetime.now(UTC8).strftime("%m-%d %H:%M")
+            })
+    delisted_hist = delisted_hist[-50:]  # 最多保留50筆
     with open(SEEN_FILE, "w", encoding="utf-8") as sf: json.dump(new_seen, sf, ensure_ascii=False)
+    with open(DELISTED_FILE, "w", encoding="utf-8") as df: json.dump(delisted_hist, df, ensure_ascii=False, indent=2)
 
     result = {"scanned_at": datetime.now(UTC8).strftime("%H:%M:%S"), "total": len(all_tokens),
               "tokens": all_tokens[:25], "portfolio": pf, "sim_portfolio": spf,
               "potential": potential[:8], "trending": trending, "rec_tracker": rec_tracker,
-              "delisted": delisted[:10]}
+              "delisted": list(reversed(delisted_hist[-20:]))}
     CACHE["data"] = result; CACHE["ts"] = time.time()
     return result
 
 @app.route("/api/dex")
 def api_dex(): return jsonify(fetch_meme_coins())
+
+@app.route("/api/clear_delisted", methods=["POST"])
+def clear_delisted():
+    DELISTED_FILE = os.path.join(os.path.dirname(__file__), "delisted_history.json")
+    with open(DELISTED_FILE, "w", encoding="utf-8") as df: json.dump([], df)
+    return jsonify({"ok": True})
 
 @app.route("/app.js")
 def app_js(): return send_file("app.js", mimetype="application/javascript")

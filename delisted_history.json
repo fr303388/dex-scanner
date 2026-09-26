@@ -1,0 +1,68 @@
+[
+  {
+    "symbol": "Pinto/SOL",
+    "last_price": 5.388e-05,
+    "peak_price": 0.0002909,
+    "crash_pct": -81.5,
+    "last_score": -0.5,
+    "image": "https://cdn.dexscreener.com/cms/images/PlT4QBQ8VtgNuAck?width=800&height=800&quality=95&format=auto",
+    "url": "https://dexscreener.com/solana/2agua4ttdjc79fjdwo2bm9s7zbzvjxgxcciacgfzpimg",
+    "address": "9y55XTAtoXxQDiXGCNS6NjoDN9YPxz3SUjVu1Qwtpump",
+    "delist_time": "09-26 11:26"
+  },
+  {
+    "symbol": "ai/maxxi/SOL",
+    "last_price": 1.882e-05,
+    "peak_price": 7.409e-05,
+    "crash_pct": -74.6,
+    "last_score": -6.5,
+    "image": "https://cdn.dexscreener.com/cms/images/GmEGvKKQENgo5yyY?width=800&height=800&quality=95&format=auto",
+    "url": "https://dexscreener.com/solana/gz78swmcffyedcuatxuqam13z5ohiwt11v7uojyzfssg",
+    "address": "5cQReyzgJQbtbGLvkm1vN9GDGFBWzcAC6TDprBwzVVjL",
+    "delist_time": "09-26 11:30"
+  },
+  {
+    "symbol": "a/aut/SOL",
+    "last_price": 1.772e-05,
+    "peak_price": 1.801e-05,
+    "crash_pct": -1.6,
+    "last_score": -5.5,
+    "image": "https://cdn.dexscreener.com/cms/images/TJiRycbAg_zQ8NVT?width=800&height=800&quality=95&format=auto",
+    "url": "https://dexscreener.com/solana/cdbw7bfpbahhmtnpauikvuxhalszozb39kawa5fx9piu",
+    "address": "56aJJAoXnWstEGA6zx6k6mrgdd6hVMN99sfwUtQfrNW3",
+    "delist_time": "09-26 11:31"
+  },
+  {
+    "symbol": "STEVEWILLDOIT/SOL",
+    "last_price": 0.000688,
+    "peak_price": 0.0008075,
+    "crash_pct": -14.8,
+    "last_score": -1.0,
+    "image": "https://cdn.dexscreener.com/cms/images/YFRito6VGLzbw-iR?width=800&height=800&quality=95&format=auto",
+    "url": "https://dexscreener.com/solana/6vjskpcgpte5ryxgjv5hs5fd9c2lk9b9qhsavjw8kqbe",
+    "address": "3pVv9iav75CfaVb2YFLtX1ijYDXSEPLmweWxUYp8q8nG",
+    "delist_time": "09-26 11:36"
+  },
+  {
+    "symbol": "ILLY/SOL",
+    "last_price": 1.27e-05,
+    "peak_price": 1.369e-05,
+    "crash_pct": -7.2,
+    "last_score": -5,
+    "image": "https://cdn.dexscreener.com/cms/images/g5JOM1Vp_iCiePKl?width=800&height=800&quality=95&format=auto",
+    "url": "https://dexscreener.com/solana/ov8zrt7edmd9slyxhrqpwvvzel6jtztevp1avesys38",
+    "address": "F2RQsvs4FDPoefppFBDp8c5z6hGAH3mEmLCpWBkWQPv7",
+    "delist_time": "09-26 11:44"
+  },
+  {
+    "symbol": "PAIDDOG/SOL",
+    "last_price": 0.0001743,
+    "peak_price": 0.0001951,
+    "crash_pct": -10.7,
+    "last_score": 5.0,
+    "image": "https://cdn.dexscreener.com/cms/images/hCb1dNuSV42JzAld?width=800&height=800&quality=95&format=auto",
+    "url": "https://dexscreener.com/solana/65hagfbwoafwnrki6lqbukkxrstjrvvkr8zfgzbuwwba",
+    "address": "G5Gg3ySGiEcPtvr3q74pPb6UzXXCZc6cvnQi1b4Bpump",
+    "delist_time": "09-26 11:49"
+  }
+]

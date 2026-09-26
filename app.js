@@ -119,7 +119,7 @@ function renderTrades(trades, containerId) {
     return `<div style="padding:3px 0;border-bottom:1px solid #21262d;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="color:#666">${t.time}</span>
       <span class="${cls}" style="font-weight:bold">${t.action}</span>
-      <span>${t.symbol}</span>
+      ${(t.url || t.address) ? `<a href="${t.url || `https://dexscreener.com/solana/${t.address}`}" target="_blank" style="color:#58a6ff">${t.symbol}</a>` : `<span>${t.symbol}</span>`}
       <span style="color:#8b949e">@ ${fmtPrice(t.action==="BUY"?t.buy_price:t.sell_price||0)}</span>
       ${pnlStr}
       ${feeStr}
@@ -253,10 +253,27 @@ async function load() {
     }).join('') || '<span style="color:#8b949e;font-size:12px">載入中...</span>';
     // 下架幣種
     document.getElementById("delisted").innerHTML = (d.delisted||[]).map(t=>{
-      return `<div style="background:#da363322;border:1px solid #da3633;border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:12px;opacity:0.7">
-        <img src="${t.image}" style="width:18px;height:18px;border-radius:50%" onerror="this.style.display='none'">
-        <span style="color:#f85149;font-weight:bold">💀 ${t.symbol}</span>
-        <span style="color:#8b949e">最後評分 ${t.last_score}</span>
+      const crash = t.crash_pct || 0;
+      const crashColor = crash < -50 ? '#f85149' : crash < -20 ? '#d29922' : '#8b949e';
+      let tag = '';
+      if (t.type === 'honeypot') tag = '<span style="background:#f85149;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px">🍬蜜糖罐頭</span>';
+      else if (crash <= -90) tag = '<span style="background:#6f0808;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px">🕸️螺旋死亡</span>';
+      else if (crash <= -70) tag = '<span style="background:#b62324;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px">💀崩盤Rug</span>';
+      else if (crash <= -50) tag = '<span style="background:#d29922;color:#000;padding:1px 5px;border-radius:3px;font-size:10px">📉暴跌</span>';
+      else if (crash <= -30) tag = '<span style="background:#8b949e;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px">💧淡出</span>';
+      const link = t.url || (t.address ? `https://dexscreener.com/solana/${t.address}` : '#');
+      return `<div style="background:#da363311;border:1px solid #da363344;border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <img src="${t.image}" style="width:16px;height:16px;border-radius:50%" onerror="this.style.display='none'">
+            <a href="${link}" target="_blank" style="color:#f85149;font-weight:bold;text-decoration:none">💀 ${t.symbol}</a>
+            <span style="color:${crashColor};font-weight:bold">${crash}%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${tag}
+            <span style="color:#666">${t.delist_time||""}</span>
+          </div>
+        </div>
       </div>`;
     }).join('') || '<span style="color:#8b949e;font-size:12px">目前無下架幣種</span>';
 
@@ -300,3 +317,5 @@ function renderTags(reasons) {
 }
 loadSavedKey();
 load(); setInterval(load, 5000);
+
+async function clearDelisted() { if(confirm('清除所有下架幣種記錄？')) { await fetch('/api/clear_delisted',{method:'POST'}); load(); } }
