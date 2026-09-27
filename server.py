@@ -515,9 +515,11 @@ def fetch_meme_coins():
             except: pass
             if real_price is None or real_price <= 0:
                 pos["current_price"] = pos.get("current_price", pos["buy_price"])
-                pos["miss_count"] = pos.get("miss_count", 0) + 1
-                if pos["miss_count"] >= 8:  # 改 8 次查不到才算下架
-                    pos["_delisted"] = True
+                held_for = now_ts - pos.get("buy_ts", now_ts)
+                if held_for > 300:  # 買進5分鐘內不計miss
+                    pos["miss_count"] = pos.get("miss_count", 0) + 1
+                    if pos["miss_count"] >= 8:
+                        pos["_delisted"] = True
             else:
                 pos["miss_count"] = 0  # 查得到價格 = 還活著
         if "buy_ts" not in pos: pos["buy_ts"] = now_ts - 3600
@@ -569,6 +571,16 @@ def fetch_meme_coins():
                 print(f"[WASH SKIP] {t['symbol']} {wmsg}", flush=True)
                 bought_syms.add(t["symbol"])
                 continue
+        # 買前確認 DexScreener 查得到價格
+        if t.get("address"):
+            try:
+                vr = requests.get(f"https://api.dexscreener.com/latest/dex/tokens/{t['address']}", timeout=5)
+                vpairs = vr.json().get("pairs", [])
+                if not vpairs:
+                    print(f"[SKIP] {t['symbol']} DexScreener 查無此幣", flush=True)
+                    bought_syms.add(t["symbol"])
+                    continue
+            except: pass
         real_p = get_real_buy_price(t["address"], t["price"])
         buy_amt = SIM_BUY  # 取消加碼，固定倉位避免追高
         if spf["cash"] < buy_amt: continue
