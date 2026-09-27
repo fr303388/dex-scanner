@@ -10,7 +10,7 @@ LOCK = threading.Lock()
 # ============ 設定 ============
 SIM_CAPITAL = 1000
 SIM_BUY_USD = 75
-SIM_MAX_POS = 5
+SIM_MAX_POS = 6
 # 分級流動性門檻
 LIQ_TIER1 = 75000   # 大池：score>=5, buy>=52%, impact<=2%
 LIQ_TIER2 = 35000   # 小池：score>=6, buy>=55%, impact<=1.5%
