@@ -410,10 +410,12 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         # Jupiter 買入報價
         bq = get_buy_quote(addr, SIM_BUY_USD)
         if not bq:
+            t["reject_reason"] = "Jupiter無報價"
             print(f"[SKIP] {t['symbol']} 無買入報價", flush=True)
             continue
         max_imp = t.get("_max_impact", 2.0)
         if bq["impact_pct"] > max_imp:
+            t["reject_reason"] = f"衝擊{bq['impact_pct']}%>{max_imp}%"
             print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%>{max_imp}%", flush=True)
             continue
 

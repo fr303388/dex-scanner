@@ -231,7 +231,7 @@ async function load() {
     }
     document.getElementById('recommend').innerHTML = d.tokens.filter(t=>t.score>=3).slice(0,6).map((t,i)=>{
       const img = t.image ? `<img src="${t.image}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0" onerror="this.style.display='none'">` : '';
-      const wn = whyNot(t);
+      const wn = t.reject_reason || whyNot(t);
       return `<div class="rec-item" style="display:flex;align-items:center;gap:6px">
         <span class="rec-rank" style="color:#f0b429">#${i+1}</span>
         ${img}
