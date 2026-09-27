@@ -11,14 +11,13 @@ LOCK = threading.Lock()
 SIM_CAPITAL = 1000
 SIM_BUY_USD = 75
 SIM_MAX_POS = 3
-SIM_MIN_SCORE = 4.5
-SIM_MIN_LIQ = 30000
-SIM_MIN_BUY_RATIO = 50
+# 分級流動性門檻
+LIQ_TIER1 = 75000   # 大池：score>=5, buy>=52%, impact<=2%
+LIQ_TIER2 = 35000   # 小池：score>=6, buy>=55%, impact<=1.5%
 SIM_SL_PCT = -12.0
 SIM_MAX_HOLD = 2 * 3600
 SIM_DEAD_SECS = 2700          # 45 分未延續
 SIM_COOLDOWN = 24 * 3600      # 同 mint 當日不進
-SIM_MAX_PRICE_IMPACT = 2.0    # %
 SOL_USD = 150.0
 SCAN_INTERVAL = 15
 
@@ -389,6 +388,19 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if addr not in first_seen:
             first_seen[addr] = now_ts
         if now_ts - first_seen[addr] < 900: continue   # 觀察 15 分
+
+        # 分級門檻
+        liq = t["liquidity"]
+        if liq >= LIQ_TIER1:
+            min_score, min_br, max_impact = 5.0, 52, 2.0
+        elif liq >= LIQ_TIER2:
+            min_score, min_br, max_impact = 6.0, 55, 1.5
+        else:
+            continue  # < $35K 不交易
+
+        if t["score"] < min_score: continue
+        if t["buy_ratio"] < min_br: continue
+        t["_max_impact"] = max_impact
         candidates.append(t)
 
     candidates.sort(key=lambda x: (x["score"], x["liquidity"]), reverse=True)
@@ -403,8 +415,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if not bq:
             print(f"[SKIP] {t['symbol']} 無買入報價", flush=True)
             continue
-        if bq["impact_pct"] > SIM_MAX_PRICE_IMPACT:
-            print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%", flush=True)
+        max_imp = t.get("_max_impact", 2.0)
+        if bq["impact_pct"] > max_imp:
+            print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%>{max_imp}%", flush=True)
             continue
 
         eff_price = bq["price_usd"]
