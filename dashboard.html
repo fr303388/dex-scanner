@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -54,6 +54,8 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
     <button id="tradeToggleBtn" onclick="toggleTrading()" style="background:#238636;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">▶ 開始交易</button>
     <span id="tradeStatus" style="margin-left:10px;font-size:12px;color:#8b949e">未啟動</span>
     <span id="tradeError" style="margin-left:10px;font-size:11px;color:#f85149"></span>
+    <label style="margin-left:15px;font-size:12px;cursor:pointer"><input type="checkbox" id="soundToggle" checked> 🔊 音效</label>
+    <label style="margin-left:10px;font-size:12px;cursor:pointer"><input type="checkbox" id="tgToggle" checked> 📱 Telegram</label>
   </div>
   <div class="pf-summary">
     <div class="pf-stat"><div class="lbl">投入</div><div class="num" id="pfInvested" style="font-size:14px">$0</div></div>
@@ -62,7 +64,7 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
     <div class="pf-stat"><div class="lbl">錢包餘額</div><div class="num" id="pfEquity" style="font-size:14px">0.0000 SOL</div></div>
   </div>
   <div style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d;margin-top:6px">
-    📋 規則：每筆 SOL · 最多 10 倉 · 買入 score≥4 · 停利 +20% · 停損 -10% · 死幣10分不動賣出 · 久未動2小時賣出 · 冷卻30秒 · 虧錢黑名單 · Rug(-70%)剔除
+    📋 規則：score≥4買 · score≥6加碼1.5倍 · 停利+30% · 停損-30% · 移動停利(峰+20%回吐半賣) · 死幣5分不動賣出 · 最長持有1.5小時 · 冷卻6分鐘 · 1h漲>50%扣分
   </div>
   <details style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d">
     <summary style="cursor:pointer;color:#58a6ff">📊 評分規則（點開）</summary>
@@ -105,7 +107,7 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
     <div class="pf-stat"><div class="lbl">總資產($1000起)</div><div class="num" id="simEquity" style="font-size:14px">$1,000.00 (0%)</div></div>
   </div>
   <div style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d;margin-top:6px">
-    📋 規則：每筆 SOL · 最多 10 倉 · 買入 score≥4 · 停利 +20% · 停損 -10% · 死幣10分不動賣出 · 久未動2小時賣出 · 冷卻30秒 · 虧錢黑名單 · Rug(-70%)剔除
+    📋 規則：score≥4買 · score≥6加碼1.5倍 · 停利+30% · 停損-30% · 移動停利(峰+20%回吐半賣) · 死幣5分不動賣出 · 最長持有1.5小時 · 冷卻6分鐘 · 1h漲>50%扣分
   </div>
   <details style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d">
     <summary style="cursor:pointer;color:#58a6ff">📊 評分規則（點開）</summary>
@@ -148,10 +150,6 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
   <div id="potential"></div>
 </div>
 
-<div class="portfolio" style="border-color:#a371f744">
-  <h2 style="color:#a371f7">📱 X 社群熱門</h2>
-  <div id="trending" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-</div>
 
 <div style="margin-top:16px;padding:12px;background:#161b22;border-radius:8px">
   <h2 style="color:#f85149;display:flex;align-items:center;gap:10px">💀 已下架/Rug 幣種 <button onclick="clearDelisted()" style="font-size:11px;padding:2px 8px;background:#21262d;border:1px solid #da3633;color:#f85149;border-radius:4px;cursor:pointer">清除</button></h2>
@@ -164,6 +162,6 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
 </table>
 
 <audio id="alertSound" src="/alert.mp3"></audio>
-<script src="/app.js"></script>
+<script src="/app.js?v=5"></script>
 </body>
 </html>

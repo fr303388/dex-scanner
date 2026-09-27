@@ -1,5 +1,5 @@
-let seenSymbols = new Set();
-load(); setInterval(load, 5000);
+﻿let seenSymbols = new Set();
+load(); setInterval(load, 15000);
 async function toggleTrading() {
   try {
     const r = await fetch('/api/toggle_trading', {method:'POST'});
@@ -136,7 +136,7 @@ function renderTrades(trades, containerId) {
       ${pnlStr}
       ${feeStr}
       ${txStr}
-      <span style="color:#666;margin-left:auto">${t.reason||""}</span>
+      <span style="color:#666">${t.reason||""}</span>
     </div>`;
   }).join("") || "<div style='color:#666'>尚無交易紀錄</div>";
 }
@@ -250,19 +250,11 @@ async function load() {
     let newOnes = [];
     currentSymbols.forEach(s => { if (!seenSymbols.has(s)) newOnes.push(s); });
     if (!isFirst && newOnes.length > 0) {
-      document.getElementById('alertSound').play().catch(()=>{});
+      if (document.getElementById('soundToggle').checked) document.getElementById('alertSound').play().catch(()=>{});
     }
     currentSymbols.forEach(s => seenSymbols.add(s));
 
-    // 社群熱門
-    document.getElementById('trending').innerHTML = (d.trending||[]).map(t=>{
-      return `<div style="background:#161b22;border-radius:6px;padding:6px 12px;display:flex;align-items:center;gap:6px;font-size:12px">
-        <b style="color:#a371f7">#${t.rank}</b>
-        <img src="${t.thumb}" style="width:18px;height:18px;border-radius:50%" onerror="this.style.display='none'">
-        <span>${t.name}</span>
-        <span style="color:#8b949e">${t.symbol}</span>
-      </div>`;
-    }).join('') || '<span style="color:#8b949e;font-size:12px">載入中...</span>';
+    // 社群熱門（已移除）
     // 下架幣種
     document.getElementById("delisted").innerHTML = (d.delisted||[]).map(t=>{
       const crash = t.crash_pct || 0;
@@ -275,12 +267,12 @@ async function load() {
       else if (crash <= -30) tag = '<span style="background:#8b949e;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px">💧淡出</span>';
       const link = t.url || (t.address ? `https://dexscreener.com/solana/${t.address}` : '#');
       const timeShort = (t.delist_time||"").slice(-5);
-      return `<div style="background:#da363311;border:1px solid #da363344;border-radius:6px;padding:4px 10px;display:flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap">
+      return `<div style="background:#da363311;border:1px solid #da363344;border-radius:6px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap;margin-right:8px;margin-bottom:4px">
         <img src="${t.image}" style="width:16px;height:16px;border-radius:50%" onerror="this.style.display='none'">
         <a href="${link}" target="_blank" style="color:#f85149;font-weight:bold;text-decoration:none">💀 ${t.symbol}</a>
         ${tag}
         <span style="color:${crashColor};font-weight:bold">${crash}%</span>
-        <span style="color:#666;margin-left:auto">${timeShort}</span>
+        <span style="color:#666">${timeShort}</span>
       </div>`;
     }).join('') || '<span style="color:#8b949e;font-size:12px">目前無下架幣種</span>';
 
@@ -322,7 +314,16 @@ function renderTags(reasons) {
     return `<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;margin:1px;background:${bg};color:#fff">${icons[r]||""} ${r}</span>`;
   }).join("");
 }
+document.getElementById('soundToggle').checked = localStorage.getItem('soundToggle') !== '0';
+document.getElementById('tgToggle').checked = localStorage.getItem('tgToggle') !== '0';
+document.getElementById('soundToggle').addEventListener('change', function() {
+  localStorage.setItem('soundToggle', this.checked ? '1' : '0');
+});
+document.getElementById('tgToggle').addEventListener('change', async function() {
+  await fetch('/api/toggle_notify', {method:'POST'});
+  localStorage.setItem('tgToggle', this.checked ? '1' : '0');
+});
 loadSavedKey();
-load(); setInterval(load, 5000);
+load(); setInterval(load, 15000);
 
 async function clearDelisted() { if(confirm('清除所有下架幣種記錄？')) { await fetch('/api/clear_delisted',{method:'POST'}); load(); } }
