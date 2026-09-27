@@ -503,8 +503,8 @@ def fetch_meme_coins():
             try:
                 chain = pos.get("chain","") or "sol"; addr = pos.get("address","")
                 if addr:
-                    pr = requests.get(f"https://api.dexscreener.com/token-pairs/v1/{chain}/{addr}", timeout=5)
-                    pairs = pr.json()
+                    pr = requests.get(f"https://api.dexscreener.com/latest/dex/tokens/{addr}", timeout=5)
+                    pairs = pr.json().get("pairs", [])
                     if pairs:
                         best = max(pairs, key=lambda x: float(x.get("liquidity",{}).get("usd",0) or 0))
                         real_price = float(best.get("priceUsd",0) or 0)
