@@ -360,7 +360,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "buy_score": pos.get("buy_score", 0),
                 "sell_impact": pos.get("sell_impact", 0),
                 "url": pos.get("url", ""),
-                "reason": reason,
+                "reason": reason + (f" (Jupiter買${pos.get('jup_buy_price',0):.6f})" if pos.get('jup_buy_price') else ""),
             })
             # 虧損/rug → 當日冷卻 + 黑名單
             if pos["pnl"] <= 0:
@@ -433,6 +433,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "buy_score": t["score"],
             "entry_liq": t["liquidity"],
             "buy_impact": bq["impact_pct"],
+            "jup_buy_price": bq["price_usd"],
             "url": t.get("url", ""),
             "image": t.get("image", ""),
             "miss_count": 0,
@@ -444,6 +445,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "buy_price": eff_price, "sell_price": 0,
             "pnl": 0, "pnl_pct": 0,
             "buy_impact": bq["impact_pct"],
+            "jup_buy_price": bq["price_usd"],
             "url": t.get("url", ""),
             "reason": f"score={t['score']} 衝擊{bq['impact_pct']}% (Jupiter買${bq['price_usd']:.6f})",
         })
@@ -550,7 +552,7 @@ def sell_one(address):
                     "pnl_pct": pos["pnl_pct"],
                     "held_min": int((now_ts - pos["buy_ts"])/60),
                     "url": pos.get("url", ""),
-                    "reason": "手動賣出",
+                    "reason": "手動賣出" + (f" (Jupiter買${pos.get('jup_buy_price',0):.6f})" if pos.get('jup_buy_price') else ""),
                 })
                 print(f"[MANUAL SELL] {pos['symbol']} {pos['pnl_pct']}%", flush=True)
             else:
