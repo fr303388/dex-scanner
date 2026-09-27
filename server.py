@@ -365,6 +365,21 @@ def fetch_meme_coins():
         elif pos["pnl_pct"] <= PF_SL: sell_reason = f"停損{pos['pnl_pct']}%"
         else:
             held_secs = now_ts - pos.get("buy_ts", now_ts)
+        # +100% 賣一半落袋
+        if pos["pnl_pct"] >= 100 and not pos.get("half_sold"):
+            half_value = pos["current_value"] / 2
+            spf["cash"] += half_value
+            pos["shares"] /= 2
+            pos["invested"] /= 2
+            pos["half_sold"] = True
+            spf["trades"].append({"time": now_str, "symbol": pos["symbol"], "action": "SELL HALF",
+                "buy_price": pos["buy_price"], "sell_price": pos["current_price"],
+                "pnl": round(half_value - pos["invested"],2), "pnl_pct": pos["pnl_pct"],
+                "held_min": int(held_secs/60), "buy_score": pos.get("buy_score",0),
+                "entry_liq": pos.get("entry_liq",0),
+                "url": pos.get("url",""), "address": pos.get("address",""),
+                "reason": f"半獲利{pos['pnl_pct']}%"})
+            print(f"[HALF] {pos['symbol']} +{pos['pnl_pct']}% sell half", flush=True)
             if held_secs > PF_MAX_HOLD: sell_reason = f"久未動{int(held_secs/60)}分鐘"
         if sell_reason and kp:
             # 真實鏈上賣出
