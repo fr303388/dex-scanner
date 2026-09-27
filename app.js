@@ -112,7 +112,7 @@ function renderPositions(positions, containerId) {
   document.getElementById(containerId).innerHTML = positions.map(p=>{
     const pnlCls = (p.pnl||0)>=0?'up':'down';
     const img = p.image ? `<img src="${p.image}" style="width:40px;height:40px;border-radius:50%;flex-shrink:0" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;border-radius:50%;background:#21262d;flex-shrink:0"></div>';
-    const btn = isSim && p.address ? `<button onclick="sellSim('${p.address}')" style="background:#da3633;border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px">賣出</button>` : '';
+    const btn = isSim && p.address ? `<button onclick="sellSim('${p.address}')" style="background:#da3633;border:none;color:#fff;padding:1px 6px;border-radius:3px;cursor:pointer;font-size:10px">賣出</button>` : '';
     const spark = sparkline(p.hist||[]);
     const borderColor = (p.pnl||0)>=0 ? '#d4af37' : '#f85149';
     return `<div class="pf-pos" style="display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;border:1px solid ${borderColor}">
