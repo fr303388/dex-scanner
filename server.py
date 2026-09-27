@@ -445,7 +445,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "pnl": 0, "pnl_pct": 0,
             "buy_impact": bq["impact_pct"],
             "url": t.get("url", ""),
-            "reason": f"score={t['score']} 衝擊{bq['impact_pct']}%",
+            "reason": f"score={t['score']} 衝擊{bq['impact_pct']}% (Jupiter買${bq['price_usd']:.6f})",
         })
         print(f"[BUY] {t['symbol']} score={t['score']} impact={bq['impact_pct']}%", flush=True)
 
