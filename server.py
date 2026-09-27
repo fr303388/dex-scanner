@@ -458,6 +458,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         "loss_amount": round(sum(t["pnl"] for t in losses), 2),
         "total_sells": len(sells),
         "total_value": round(total_value, 2),
+        "total_invested": round(sum(p["invested"] for p in kept), 2),
         "total_pnl": round(total_value + sim["cash"] - SIM_CAPITAL, 2),
     }
 
