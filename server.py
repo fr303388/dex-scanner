@@ -536,7 +536,8 @@ def fetch_meme_coins():
         if pos.get("_delisted"): sr = "下架死幣"
         elif pos["pnl_pct"] >= SIM_TP: sr = f"停利+{pos['pnl_pct']}%"
         elif pos["pnl_pct"] <= SIM_SL: sr = f"停損{pos['pnl_pct']}%"
-        elif pos.get("peak_pct",0) >= 30 and pos["pnl_pct"] < pos["peak_pct"] * 0.70: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct",0) >= 20 and pos["pnl_pct"] <= 0: sr = f"保本出場(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct",0) >= 30 and pos["pnl_pct"] < pos["peak_pct"] * 0.80: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
         else:
             # RUG 偵測：入場流動性流失 >40%
             entry_liq = pos.get("entry_liq", 0)
