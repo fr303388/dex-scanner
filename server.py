@@ -381,9 +381,6 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         addr = t["address"]
         if not addr or addr in held_addr: continue
         if addr in sim["cooldown"] or addr in sim["blacklist"]: continue
-        if t["score"] < SIM_MIN_SCORE: continue
-        if t["buy_ratio"] < SIM_MIN_BUY_RATIO: continue
-        if t["liquidity"] < SIM_MIN_LIQ: continue
         # 首次看到時間（用 address）
         if addr not in first_seen:
             first_seen[addr] = now_ts
