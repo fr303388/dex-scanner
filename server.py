@@ -488,7 +488,7 @@ def fetch_meme_coins():
     spf.setdefault("cash", 1000)
     spf.setdefault("positions", [])
     spf.setdefault("cooldown", {})
-    SIM_BUY = 75; SIM_MAX = 8; PERM_BLACKLIST = {"DEBT/SOL"}; SIM_TP = 999.0; SIM_SL = -20.0; SIM_CD = 0
+    SIM_BUY = 75; SIM_MAX = 8; PERM_BLACKLIST = set(); SIM_TP = 999.0; SIM_SL = -20.0; SIM_CD = 0
     spf.setdefault("blacklist", [])
     spf["cooldown"] = {sym: ts for sym, ts in spf["cooldown"].items() if now_ts - ts < SIM_CD}
     for pos in spf["positions"]:
