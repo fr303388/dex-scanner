@@ -428,8 +428,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%>{max_imp}%", flush=True)
             continue
 
-        # 用 DexScreener 中間價 + 衝擊% 換算實際買入成本
-        eff_price = t["price"] * (1 + bq["impact_pct"] / 100) if t["price"] > 0 else bq["price_usd"]
+        # 用 Jupiter 實際成交價（decimals 已由 Solana RPC 修正）
+        eff_price = bq["price_usd"] if bq["price_usd"] > 0 else t["price"]
         tokens_bought = SIM_BUY_USD / eff_price
         sim["cash"] -= SIM_BUY_USD
         kept.append({
