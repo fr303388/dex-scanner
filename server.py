@@ -74,7 +74,7 @@ def save_first_seen(d):
 def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
     """回傳 quote dict，失敗回傳 None"""
     try:
-        r = requests.get("https://quote-api.jup.ag/v6/quote", params={
+        r = requests.get("https://api.jup.ag/swap/v1/quote", params={
             "inputMint": input_mint, "outputMint": output_mint,
             "amount": str(int(amount_lamports)), "slippageBps": str(slippage_bps),
         }, timeout=10)
