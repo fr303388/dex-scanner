@@ -208,7 +208,7 @@ async function load() {
     document.getElementById('sWins').textContent = sst.wins||0;
     document.getElementById('sLosses').textContent = sst.losses||0;
     document.getElementById('sRugs').textContent = sst.rugs||0;
-    document.getElementById('sCoins').textContent = sst.unique_bought||0;
+    document.getElementById('sCoins').textContent = spf.unique_bought||0;
     const swr = (sst.wins||0)+(sst.losses||0)>0 ? Math.round((sst.wins||0)/((sst.wins||0)+(sst.losses||0))*100) : 0;
     document.getElementById('sWinRate').textContent = swr+'%';
     document.getElementById('sWinAmt').textContent = '$'+((sst.win_amount||0).toFixed(2));
