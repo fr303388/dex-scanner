@@ -20,7 +20,7 @@ def fetch_gmgn_trending():
         return GMGN_CACHE["data"]
     try:
         env = dict(os.environ, GMGN_API_KEY=GMGN_KEY)
-        out = subprocess.run(["C:/Users/ANGEL/AppData/Local/Doubao/User Data/sandbox_runtime/bases/c98c5042338ed152c6f10ecd8591889f/node/node.exe", "C:/Users/ANGEL/AppData/Local/Doubao/User Data/sandbox_runtime/bases/c98c5042338ed152c6f10ecd8591889f/node/node_modules/gmgn-cli/dist/index.js", "market", "trending", "--chain", "sol",
+        out = subprocess.run(["/root/.local/share/mise/installs/node/24.21.0/bin/node", "/root/.local/share/mise/installs/node/24.21.0/lib/node_modules/gmgn-cli/dist/index.js", "market", "trending", "--chain", "sol",
                               "--interval", "1h", "--limit", "50", "--raw"],
                              capture_output=True, text=True, timeout=20, env=env)
         data = json.loads(out.stdout)
@@ -45,8 +45,8 @@ def fetch_gmgn_trending():
     except Exception as e:
         print(f"[GMGN] 失敗: {e}")
     return GMGN_CACHE["data"]
-PORTFOLIO_FILE = r'C:\Users\ANGEL\Doubao\chats\2026-09-12\new-chat\dex_scanner\portfolio.json'
-SIM_PORTFOLIO_FILE = r'C:\Users\ANGEL\Doubao\chats\2026-09-12\new-chat\dex_scanner\sim_portfolio.json'
+PORTFOLIO_FILE = 'portfolio.json'
+SIM_PORTFOLIO_FILE = 'sim_portfolio.json'
 REC_FILE = r'C:\Users\ANGEL\Doubao\chats\2026-09-12\new-chat\dex_scanner\rec_tracker.json'
 PRIVKEY_FILE = r'C:\Users\ANGEL\Doubao\chats\2026-09-12\new-chat\dex_scanner\privkey.json'
 WsolMint = "So11111111111111111111111111111111111111112"
@@ -280,7 +280,7 @@ def fetch_meme_coins():
     if GMGN_ENABLED:
         try:
             env = dict(os.environ, GMGN_API_KEY=GMGN_KEY)
-            out = subprocess.run(["C:/Users/ANGEL/AppData/Local/Doubao/User Data/sandbox_runtime/bases/c98c5042338ed152c6f10ecd8591889f/node/node.exe", "C:/Users/ANGEL/AppData/Local/Doubao/User Data/sandbox_runtime/bases/c98c5042338ed152c6f10ecd8591889f/node/node_modules/gmgn-cli/dist/index.js", "market", "trending", "--chain", "sol",
+            out = subprocess.run(["/root/.local/share/mise/installs/node/24.21.0/bin/node", "/root/.local/share/mise/installs/node/24.21.0/lib/node_modules/gmgn-cli/dist/index.js", "market", "trending", "--chain", "sol",
                                   "--interval", "1h", "--limit", "30", "--raw"],
                                  capture_output=True, text=True, timeout=15, env=env)
             gm_data = json.loads(out.stdout).get("data", {}).get("rank", [])
@@ -488,7 +488,7 @@ def fetch_meme_coins():
     spf.setdefault("cash", 1000)
     spf.setdefault("positions", [])
     spf.setdefault("cooldown", {})
-    SIM_BUY = 100; SIM_MAX = 10; PERM_BLACKLIST = {"DEBT/SOL"}; SIM_TP = 25.0; SIM_SL = -10.0; SIM_CD = 360
+    SIM_BUY = 75; SIM_MAX = 8; PERM_BLACKLIST = {"DEBT/SOL"}; SIM_TP = 999.0; SIM_SL = -20.0; SIM_CD = 0
     spf.setdefault("blacklist", [])
     spf["cooldown"] = {sym: ts for sym, ts in spf["cooldown"].items() if now_ts - ts < SIM_CD}
     for pos in spf["positions"]:
@@ -498,10 +498,26 @@ def fetch_meme_coins():
             pos["miss_count"] = 0
             if current.get("image"): pos["image"] = current["image"]
         else:
-            pos["current_price"] = pos.get("current_price", pos["buy_price"])
-            pos["miss_count"] = pos.get("miss_count", 0) + 1
-            if pos["miss_count"] >= 3:
-                pos["_delisted"] = True
+            # 幣不在熱門榜 → 直接查真實價格（不在榜 ≠ 死了）
+            real_price = None
+            try:
+                chain = pos.get("chain",""); addr = pos.get("address","")
+                if chain and addr:
+                    pr = requests.get(f"https://api.dexscreener.com/token-pairs/v1/{chain}/{addr}", timeout=5)
+                    pairs = pr.json()
+                    if pairs:
+                        best = max(pairs, key=lambda x: float(x.get("liquidity",{}).get("usd",0) or 0))
+                        real_price = float(best.get("priceUsd",0) or 0)
+                        if real_price > 0:
+                            pos["current_price"] = real_price
+            except: pass
+            if real_price is None or real_price <= 0:
+                pos["current_price"] = pos.get("current_price", pos["buy_price"])
+                pos["miss_count"] = pos.get("miss_count", 0) + 1
+                if pos["miss_count"] >= 8:  # 改 8 次查不到才算下架
+                    pos["_delisted"] = True
+            else:
+                pos["miss_count"] = 0  # 查得到價格 = 還活著
         if "buy_ts" not in pos: pos["buy_ts"] = now_ts - 3600
         bp = pos["buy_price"]; cp = pos["current_price"]
         if bp > 0 and cp > bp * 5: pos["current_price"] = bp * 5
@@ -516,7 +532,7 @@ def fetch_meme_coins():
         if pos.get("_delisted"): sr = "下架死幣"
         elif pos["pnl_pct"] >= SIM_TP: sr = f"停利+{pos['pnl_pct']}%"
         elif pos["pnl_pct"] <= SIM_SL: sr = f"停損{pos['pnl_pct']}%"
-        elif pos.get("peak_pct",0) >= 20 and pos["pnl_pct"] < pos["peak_pct"] * 0.5: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct",0) >= 50 and pos["pnl_pct"] < pos["peak_pct"] * 0.60: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
         else:
             # RUG 偵測：入場流動性流失 >40%
             entry_liq = pos.get("entry_liq", 0)
@@ -534,11 +550,11 @@ def fetch_meme_coins():
                 "held_min": held_min, "buy_score": pos.get("buy_score",0),
                 "entry_liq": pos.get("entry_liq",0),
                 "url": pos.get("url",""), "address": pos.get("address",""), "reason": sr})
-            spf["cooldown"][pos["symbol"]] = now_ts + 1800 if pos["pnl"] < 0 else now_ts
+            spf["cooldown"][pos["symbol"]] = now_ts + 0 if pos["pnl"] < 0 else now_ts  # 公海不冷卻
             # 虧錢不永久黑名單，只冷卻5分鐘
         else: kept.append(pos)
     held = [p["symbol"] for p in kept]
-    fresh = [t for t in all_tokens if t["symbol"] not in held and t["symbol"] not in spf["cooldown"] and t["symbol"] not in spf.get("blacklist",[]) and t["symbol"] not in PERM_BLACKLIST and t["score"] >= 4.0 and t["price"] > 0 and t.get("buy_ratio",50) >= 45 and t.get("liquidity",0) > 50000 and (time.time() - first_seen_map.get(t["symbol"], 0)) > 900]
+    fresh = [t for t in all_tokens if t["symbol"] not in held and t["symbol"] not in spf["cooldown"] and t["symbol"] not in spf.get("blacklist",[]) and t["symbol"] not in PERM_BLACKLIST and t["score"] >= 3.5 and t["price"] > 0 and t.get("buy_ratio",50) >= 40 and t.get("liquidity",0) > 30000 and (time.time() - first_seen_map.get(t["symbol"], 0)) > 900]
     bought_syms = set(held)
     for t in fresh:
         if t["symbol"] in bought_syms: continue
@@ -552,7 +568,7 @@ def fetch_meme_coins():
                 bought_syms.add(t["symbol"])
                 continue
         real_p = get_real_buy_price(t["address"], t["price"])
-        buy_amt = SIM_BUY * (1.5 if t["score"] >= 6 else 1.0)
+        buy_amt = SIM_BUY  # 取消加碼，固定倉位避免追高
         if spf["cash"] < buy_amt: continue
         bought_syms.add(t["symbol"])
         kept.append({"symbol": t["symbol"], "buy_price": real_p, "buy_time": now_str,
@@ -797,6 +813,6 @@ def check_wash_addresses(pair_address, limit=20):
 
 if __name__ == "__main__":
     print("迷因幣雷達: http://127.0.0.1:8770")
-    app.run(host="127.0.0.1", port=8770, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=int(__import__("os").environ.get("PORT", 8080)), debug=False, threaded=True)
 
-
+
