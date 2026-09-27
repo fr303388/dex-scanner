@@ -10,7 +10,7 @@ LOCK = threading.Lock()
 # ============ 設定 ============
 SIM_CAPITAL = 1000
 SIM_BUY_USD = 75
-SIM_MAX_POS = 6
+SIM_MAX_POS = 3
 # 分級流動性門檻
 LIQ_TIER1 = 75000   # 大池：score>=5, buy>=52%, impact<=2%
 LIQ_TIER2 = 35000   # 小池：score>=6, buy>=55%, impact<=1.5%
@@ -362,11 +362,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "url": pos.get("url", ""),
                 "reason": reason,
             })
-            # 虧損/rug → 當日冷卻 + 黑名單
-            if pos["pnl"] <= 0:
-                sim["cooldown"][pos["address"]] = now_ts + SIM_COOLDOWN
-                if pos["address"] not in sim["blacklist"]:
-                    sim["blacklist"].append(pos["address"])
+            # 任何出場 → 同 mint 當日不再進場
+            sim["cooldown"][pos["address"]] = now_ts + SIM_COOLDOWN
             print(f"[SELL] {pos['symbol']} {reason}", flush=True)
         else:
             kept.append(pos)
@@ -377,7 +374,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
     for t in tokens:
         addr = t["address"]
         if not addr or addr in held_addr: continue
-        if addr in sim["cooldown"] or addr in sim["blacklist"]: continue
+        if addr in sim["cooldown"]: continue
         # 首次看到時間（用 address）
         if addr not in first_seen:
             first_seen[addr] = now_ts
@@ -554,6 +551,7 @@ def sell_one(address):
                     "url": pos.get("url", ""),
                     "reason": "手動賣出" + (f" [買衝擊{pos.get('buy_impact',0)}%]" if pos.get('buy_impact') else ""),
                 })
+                sim["cooldown"][address] = now_ts + SIM_COOLDOWN
                 print(f"[MANUAL SELL] {pos['symbol']} {pos['pnl_pct']}%", flush=True)
             else:
                 kept.append(pos)
