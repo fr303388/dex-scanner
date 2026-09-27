@@ -324,6 +324,10 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         pos["pnl"] = pos["current_value"] - pos["invested"]
         pos["pnl_pct"] = round(pos["pnl"] / pos["invested"] * 100, 1)
         pos["peak_pct"] = max(pos.get("peak_pct", pos["pnl_pct"]), pos["pnl_pct"])
+        # 記錄價格走勢（最多30點）
+        if "hist" not in pos: pos["hist"] = []
+        pos["hist"].append(round(pos["current_price"], 8))
+        if len(pos["hist"]) > 30: pos["hist"] = pos["hist"][-30:]
 
     # 出場判斷
     kept = []

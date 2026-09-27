@@ -113,15 +113,31 @@ function renderPositions(positions, containerId) {
     const pnlCls = (p.pnl||0)>=0?'up':'down';
     const img = p.image ? `<img src="${p.image}" style="width:40px;height:40px;border-radius:50%;flex-shrink:0" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;border-radius:50%;background:#21262d;flex-shrink:0"></div>';
     const btn = isSim && p.address ? `<button onclick="sellSim('${p.address}')" style="background:#da3633;border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px">賣出</button>` : '';
-    return `<div class="pf-pos" style="display:flex;align-items:center;gap:10px">
+    const spark = sparkline(p.hist||[]);
+    return `<div class="pf-pos" style="display:flex;align-items:center;gap:10px;position:relative;overflow:hidden">
+      ${spark}
       ${img}
-      <div style="flex:1">
+      <div style="flex:1;z-index:1">
         <div class="sym"><a href="${p.url}" target="_blank">${p.symbol}</a> ${btn}</div>
         <div class="detail" style="font-size:10px;color:#8b949e">買 ${fmtPrice(p.buy_price||0)} | 現 ${fmtPrice(p.current_price||0)}</div>
         <div class="pnl ${pnlCls}" style="font-size:12px">${(p.pnl||0)>=0?'+':''}$${(p.pnl||0).toFixed(2)} (${(p.pnl_pct||0)>=0?'+':''}${(p.pnl_pct||0)}%) <span style="color:#666;font-size:10px">持 ${holdStr(p.buy_ts)}</span></div>
       </div>
     </div>`;
   }).join('') || '<div style="color:#666;font-size:12px;grid-column:1/-1">尚無持倉</div>';
+}
+function sparkline(data) {
+  if (!data || data.length < 2) return '';
+  const w=100, h=36;
+  const min=Math.min(...data), max=Math.max(...data);
+  const range=max-min||1;
+  const pts=data.map((v,i)=>{
+    const x=(i/(data.length-1))*w;
+    const y=h-((v-min)/range)*(h-4)-2;
+    return x+','+y;
+  }).join(' ');
+  const up = data[data.length-1] >= data[0];
+  const color = up ? '#3fb950' : '#f85149';
+  return `<svg width="${w}" height="${h}" style="position:absolute;right:0;top:0;opacity:0.25;z-index:0"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
 }
 function sellSim(addr) {
   fetch('/api/sell/'+addr, {method:'POST'}).then(()=>load());
