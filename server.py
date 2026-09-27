@@ -552,7 +552,7 @@ def sell_one(address):
                     "pnl_pct": pos["pnl_pct"],
                     "held_min": int((now_ts - pos["buy_ts"])/60),
                     "url": pos.get("url", ""),
-                    "reason": "手動賣出",
+                    "reason": "手動賣出" + (f" [買衝擊{pos.get('buy_impact',0)}%]" if pos.get('buy_impact') else ""),
                 })
                 print(f"[MANUAL SELL] {pos['symbol']} {pos['pnl_pct']}%", flush=True)
             else:
