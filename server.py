@@ -416,8 +416,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%>{max_imp}%", flush=True)
             continue
 
-        # 用 DexScreener 價格算持倉（Jupiter decimals 不可靠）
-        eff_price = t["price"] if t["price"] > 0 else bq["price_usd"]
+        # 用 Jupiter 實際成交價當買入成本
+        eff_price = bq["price_usd"] if bq["price_usd"] > 0 else t["price"]
         tokens_bought = SIM_BUY_USD / eff_price
         sim["cash"] -= SIM_BUY_USD
         kept.append({
