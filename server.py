@@ -12,6 +12,8 @@ CACHE = {"data": None, "ts": 0}
 GMGN_CACHE = {"data": {}, "ts": 0}
 GMGN_KEY = "gmgn_solbscbaseethmonadtron"
 GMGN_ENABLED = True
+GMGN_NODE = r"C:\Users\ANGEL\AppData\Local\Doubao\User Data\sandbox_runtime\bases\c98c5042338ed152c6f10ecd8591889f\node\node.exe"
+GMGN_CLI = r"C:\Users\ANGEL\AppData\Local\Doubao\User Data\sandbox_runtime\bases\c98c5042338ed152c6f10ecd8591889f\node\node_modules\gmgn-cli\dist\index.js"
 
 def fetch_gmgn_trending():
     """呼叫 gmgn-cli 取得 trending 資料，回傳 {address: data} dict"""
@@ -20,7 +22,7 @@ def fetch_gmgn_trending():
         return GMGN_CACHE["data"]
     try:
         env = dict(os.environ, GMGN_API_KEY=GMGN_KEY)
-        out = subprocess.run(["/root/.local/share/mise/installs/node/24.21.0/bin/node", "/root/.local/share/mise/installs/node/24.21.0/lib/node_modules/gmgn-cli/dist/index.js", "market", "trending", "--chain", "sol",
+        out = subprocess.run([GMGN_NODE, GMGN_CLI, "market", "trending", "--chain", "sol",
                               "--interval", "1h", "--limit", "50", "--raw"],
                              capture_output=True, text=True, timeout=20, env=env)
         data = json.loads(out.stdout)
@@ -179,7 +181,7 @@ def score_token(t):
     h1, h24 = t.get("change_1h",0), t.get("change_24h",0)
     vol, liq, br = t.get("volume_24h",0), t.get("liquidity",0), t.get("buy_ratio",50)
     if h1 > 50: score -= 2; reasons.append("追高風險")
-    elif h1 > 30: score += 1; reasons.append("1h強勢")
+    elif h1 > 30: score -= 1; reasons.append("1h追高風險")
     elif h1 > 10: score += 1; reasons.append("1h上漲")
     elif h1 < -10: score -= 2; reasons.append("1h暴跌")
     elif h1 < -30: score -= 3; reasons.append("1h崩盤")
@@ -280,7 +282,7 @@ def fetch_meme_coins():
     if GMGN_ENABLED:
         try:
             env = dict(os.environ, GMGN_API_KEY=GMGN_KEY)
-            out = subprocess.run(["/root/.local/share/mise/installs/node/24.21.0/bin/node", "/root/.local/share/mise/installs/node/24.21.0/lib/node_modules/gmgn-cli/dist/index.js", "market", "trending", "--chain", "sol",
+            out = subprocess.run([GMGN_NODE, GMGN_CLI, "market", "trending", "--chain", "sol",
                                   "--interval", "1h", "--limit", "30", "--raw"],
                                  capture_output=True, text=True, timeout=15, env=env)
             gm_data = json.loads(out.stdout).get("data", {}).get("rank", [])
@@ -488,7 +490,7 @@ def fetch_meme_coins():
     spf.setdefault("cash", 1000)
     spf.setdefault("positions", [])
     spf.setdefault("cooldown", {})
-    SIM_BUY = 75; SIM_MAX = 8; PERM_BLACKLIST = set(); SIM_TP = 999.0; SIM_SL = -20.0; SIM_CD = 0
+    SIM_BUY = 75; SIM_MAX = 8; PERM_BLACKLIST = set(); SIM_TP = 999.0; SIM_SL = -15.0; SIM_CD = 0
     spf.setdefault("blacklist", [])
     spf["cooldown"] = {sym: ts for sym, ts in spf["cooldown"].items() if now_ts - ts < SIM_CD}
     for pos in spf["positions"]:
@@ -532,7 +534,7 @@ def fetch_meme_coins():
         if pos.get("_delisted"): sr = "下架死幣"
         elif pos["pnl_pct"] >= SIM_TP: sr = f"停利+{pos['pnl_pct']}%"
         elif pos["pnl_pct"] <= SIM_SL: sr = f"停損{pos['pnl_pct']}%"
-        elif pos.get("peak_pct",0) >= 50 and pos["pnl_pct"] < pos["peak_pct"] * 0.60: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct",0) >= 30 and pos["pnl_pct"] < pos["peak_pct"] * 0.70: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
         else:
             # RUG 偵測：入場流動性流失 >40%
             entry_liq = pos.get("entry_liq", 0)
@@ -554,7 +556,7 @@ def fetch_meme_coins():
             # 虧錢不永久黑名單，只冷卻5分鐘
         else: kept.append(pos)
     held = [p["symbol"] for p in kept]
-    fresh = [t for t in all_tokens if t["symbol"] not in held and t["symbol"] not in spf["cooldown"] and t["symbol"] not in spf.get("blacklist",[]) and t["symbol"] not in PERM_BLACKLIST and t["score"] >= 3.5 and t["price"] > 0 and t.get("buy_ratio",50) >= 40 and t.get("liquidity",0) > 30000 and (time.time() - first_seen_map.get(t["symbol"], 0)) > 900]
+    fresh = [t for t in all_tokens if t["symbol"] not in held and t["symbol"] not in spf["cooldown"] and t["symbol"] not in spf.get("blacklist",[]) and t["symbol"] not in PERM_BLACKLIST and t["score"] >= 4 and t["price"] > 0 and t.get("buy_ratio",50) >= 40 and t.get("liquidity",0) > 30000 and (time.time() - first_seen_map.get(t["symbol"], 0)) > 900]
     bought_syms = set(held)
     for t in fresh:
         if t["symbol"] in bought_syms: continue
