@@ -65,17 +65,25 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
   </div>
   <details style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d">
     <summary style="cursor:pointer;color:#58a6ff">📊 評分規則（點開）</summary>
-    <div style="padding:6px 12px;line-height:1.8;color:#d29922">
-      📋 V3.1 規則：分級進場(大池score≥5買≥52%衝擊≤2% / 小池score≥6買≥55%衝擊≤1.5%) · 每筆$75最多5倉 · 停損-12% · peak≥50回吐至20%出 · peak≥30回撤20百分點出 · 45分<+3%出 · 最長抱2小時 · 虧損當日不進<br><br>
-      ✅ +2 1h漲>30%（強勢） · +1 1h漲10-30%<br>
-      ✅ +2 24h漲10-50%（健康） · +1 50-150% · -1 >200%（高位）<br>
-      ✅ +1.5 交易量>$200K · +0.5 >$50K<br>
-      ✅ +1.5 流動性>$50K · +1 >$30K · -2 <$10K · -3 <$5K<br>
-      ✅ +1.5 買盤>70% · -1.5 買盤<40%<br>
-      ✅ +3 買家<10人（刷單） · -1 買家<30人<br>
-      ❌ -2 量/流動>5（洗盤） · -3 1h>80%且24h>300%（拉盤陷阱）<br>
-      ❌ -3 交易<30筆 · -1 <80筆 · -2 大戶對敲<br>
-      分數 ≥3.5 才買 · 加 GMGN 洗盤-5 / 聰明錢+2
+    <div style="padding:6px 12px;line-height:1.8">
+      <b style="color:#d29922">📋 分級進場</b><br>
+      流動性≥$75K：score≥5、買盤≥52%、衝擊≤2%<br>
+      流動性$35–75K：score≥6、買盤≥55%、衝擊≤1.5%<br>
+      <b style="color:#d29922">📊 評分項目</b><br>
+      1h漲10–30%：+1 · 1h漲30–50%：-1 · 1h漲>50%：-2（追高）<br>
+      1h跌10–30%：-2 · 1h跌>30%：-3<br>
+      24h漲10–50%：+2 · 24h漲50–150%：+1 · 24h漲>200%：-1<br>
+      24h跌30–50%：-3 · 24h跌>50%：-5<br>
+      交易量>$200K：+1.5 · >$50K：+0.5<br>
+      流動性>$50K：+1.5 · >$30K：+1 · <$10K：-2<br>
+      買盤>70%：+1.5 · 買盤<40%：-1.5<br>
+      交易筆數<30：-3 · <80：-1<br>
+      1h>80%且24h>300%：-3（拉盤陷阱）<br>
+      GMGN洗盤：-5 · 聰明錢≥5：+2 · ≥2：+1<br>
+      <b style="color:#d29922">💰 出場</b><br>
+      停損-12% · peak≥50%且pnl<20%鎖利<br>
+      peak≥30%回撤20百分點出 · 45分<+3%出 · 最長抱2小時<br>
+      同mint出場後當日不進 · 首次出現觀察15分鐘
     </div>
   </details>
   <div id="pfStats" style="display:flex;gap:16px;padding:8px 12px;font-size:13px;color:#8b949e;border-top:1px solid #21262d">
@@ -106,17 +114,25 @@ a { color:#58a6ff; text-decoration:none; } a:hover { text-decoration:underline; 
   </div>
   <details style="font-size:11px;color:#8b949e;padding:6px 0;border-top:1px solid #21262d">
     <summary style="cursor:pointer;color:#58a6ff">📊 評分規則（點開）</summary>
-    <div style="padding:6px 12px;line-height:1.8;color:#d29922">
-      📋 V3.1 規則：分級進場(大池score≥5買≥52%衝擊≤2% / 小池score≥6買≥55%衝擊≤1.5%) · 每筆$75最多5倉 · 停損-12% · peak≥50回吐至20%出 · peak≥30回撤20百分點出 · 45分<+3%出 · 最長抱2小時 · 虧損當日不進<br><br>
-      ✅ +2 1h漲>30%（強勢） · +1 1h漲10-30%<br>
-      ✅ +2 24h漲10-50%（健康） · +1 50-150% · -1 >200%（高位）<br>
-      ✅ +1.5 交易量>$200K · +0.5 >$50K<br>
-      ✅ +1.5 流動性>$50K · +1 >$30K · -2 <$10K · -3 <$5K<br>
-      ✅ +1.5 買盤>70% · -1.5 買盤<40%<br>
-      ✅ +3 買家<10人（刷單） · -1 買家<30人<br>
-      ❌ -2 量/流動>5（洗盤） · -3 1h>80%且24h>300%（拉盤陷阱）<br>
-      ❌ -3 交易<30筆 · -1 <80筆 · -2 大戶對敲<br>
-      分數 ≥3.5 才買 · 加 GMGN 洗盤-5 / 聰明錢+2
+    <div style="padding:6px 12px;line-height:1.8">
+      <b style="color:#d29922">📋 分級進場</b><br>
+      流動性≥$75K：score≥5、買盤≥52%、衝擊≤2%<br>
+      流動性$35–75K：score≥6、買盤≥55%、衝擊≤1.5%<br>
+      <b style="color:#d29922">📊 評分項目</b><br>
+      1h漲10–30%：+1 · 1h漲30–50%：-1 · 1h漲>50%：-2（追高）<br>
+      1h跌10–30%：-2 · 1h跌>30%：-3<br>
+      24h漲10–50%：+2 · 24h漲50–150%：+1 · 24h漲>200%：-1<br>
+      24h跌30–50%：-3 · 24h跌>50%：-5<br>
+      交易量>$200K：+1.5 · >$50K：+0.5<br>
+      流動性>$50K：+1.5 · >$30K：+1 · <$10K：-2<br>
+      買盤>70%：+1.5 · 買盤<40%：-1.5<br>
+      交易筆數<30：-3 · <80：-1<br>
+      1h>80%且24h>300%：-3（拉盤陷阱）<br>
+      GMGN洗盤：-5 · 聰明錢≥5：+2 · ≥2：+1<br>
+      <b style="color:#d29922">💰 出場</b><br>
+      停損-12% · peak≥50%且pnl<20%鎖利<br>
+      peak≥30%回撤20百分點出 · 45分<+3%出 · 最長抱2小時<br>
+      同mint出場後當日不進 · 首次出現觀察15分鐘
     </div>
   </details>
   <div id="simStats" style="display:flex;gap:16px;padding:8px 12px;font-size:13px;color:#8b949e;border-top:1px solid #21262d">
