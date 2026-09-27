@@ -412,7 +412,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         elif liq >= LIQ_TIER2:
             min_score, min_br, max_impact = 6.0, 55, 1.5
         else:
-            rejected.append((t, f"流動性${(liq/1000).toFixed(0)}K<$35K")); continue
+            rejected.append((t, f"流動性${int(liq/1000)}K<$35K")); continue
 
         if t["score"] < min_score:
             rejected.append((t, f"分數{t['score']}<{min_score}")); continue
@@ -586,9 +586,6 @@ def sell_one(address):
             else:
                 kept.append(pos)
         sim["positions"] = kept
-    sim["rejected"] = [{"symbol": t["symbol"], "address": t["address"], "reason": r,
-                        "score": t["score"], "liq": t["liquidity"], "buy": t["buy_ratio"]}
-                       for t, r in rejected[:20]]
         save_sim(sim)
     return jsonify({"ok": True})
 
