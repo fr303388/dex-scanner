@@ -127,7 +127,7 @@ function renderPositions(positions, containerId) {
 }
 function sparkline(data) {
   if (!data || data.length < 2) return '';
-  const w=100, h=36;
+  const w=200, h=60;
   const min=Math.min(...data), max=Math.max(...data);
   const range=max-min||1;
   const pts=data.map((v,i)=>{
@@ -135,9 +135,10 @@ function sparkline(data) {
     const y=h-((v-min)/range)*(h-4)-2;
     return x+','+y;
   }).join(' ');
+  const areaPts = '0,'+h+' '+pts+' '+w+','+h;
   const up = data[data.length-1] >= data[0];
   const color = up ? '#3fb950' : '#f85149';
-  return `<svg width="${w}" height="${h}" style="position:absolute;right:0;top:0;opacity:0.25;z-index:0"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+  return `<svg width="100%" height="${h}" preserveAspectRatio="none" style="position:absolute;right:0;top:0;opacity:0.35;z-index:0"><polygon points="${areaPts}" fill="${color}" opacity="0.2"/><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/></svg>`;
 }
 function sellSim(addr) {
   fetch('/api/sell/'+addr, {method:'POST'}).then(()=>load());
