@@ -128,7 +128,7 @@ function renderPositions(positions, containerId) {
 }
 function sparkline(data) {
   if (!data || data.length < 2) return '';
-  const w=200, h=60;
+  const w=400, h=70;
   const min=Math.min(...data), max=Math.max(...data);
   const range=max-min||1;
   const pts=data.map((v,i)=>{
