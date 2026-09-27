@@ -86,6 +86,21 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
         print(f"[JUP] quote fail: {e}", flush=True)
         return None
 
+DECIMALS_CACHE = {}
+def get_token_decimals(mint):
+    if mint in DECIMALS_CACHE: return DECIMALS_CACHE[mint]
+    try:
+        r = requests.post("https://api.mainnet-beta.solana.com", json={
+            "jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
+            "params": [mint, {"encoding": "jsonParsed"}]
+        }, timeout=8)
+        dec = r.json()["result"]["value"]["data"]["parsed"]["info"]["decimals"]
+        DECIMALS_CACHE[mint] = dec
+        return dec
+    except Exception as e:
+        print(f"[DEC] fail {mint[:8]}: {e}", flush=True)
+        return 6
+
 def get_buy_quote(token_mint, usd_amount=SIM_BUY_USD):
     """取得買入報價，回傳 (有效價格USD, priceImpact%, inLamports, outAmount)"""
     sol_in = usd_amount / SOL_USD
