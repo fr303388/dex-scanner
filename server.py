@@ -311,16 +311,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             except:
                 _handle_miss(pos, now_ts)
 
-        # 用 Jupiter 賣出報價計算真實可成交價值
-        sell_quote = get_sell_value_usd(addr, pos["tokens"], decimals)
-        if sell_quote:
-            pos["sell_quote_usd"] = round(sell_quote["usd"], 2)
-            pos["sell_impact"] = sell_quote["impact_pct"]
-            pos["current_value"] = sell_quote["usd"]
-        else:
-            # fallback 用看板價格
-            pos["current_value"] = pos["tokens"] * pos["current_price"]
-            pos["sell_quote_usd"] = round(pos["current_value"], 2)
+        # 用 DexScreener 價格算持倉市值
+        pos["current_value"] = pos["tokens"] * pos["current_price"]
+        pos["sell_quote_usd"] = round(pos["current_value"], 2)
 
         pos["pnl"] = pos["current_value"] - pos["invested"]
         pos["pnl_pct"] = round(pos["pnl"] / pos["invested"] * 100, 1)
@@ -419,8 +412,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%>{max_imp}%", flush=True)
             continue
 
-        eff_price = bq["price_usd"]
-        tokens_bought = bq["tokens"]
+        # 用 DexScreener 價格算持倉（Jupiter decimals 不可靠）
+        eff_price = t["price"] if t["price"] > 0 else bq["price_usd"]
+        tokens_bought = SIM_BUY_USD / eff_price
         sim["cash"] -= SIM_BUY_USD
         kept.append({
             "address": addr,
