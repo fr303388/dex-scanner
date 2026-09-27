@@ -108,7 +108,7 @@ def get_buy_quote(token_mint, usd_amount=SIM_BUY_USD):
     q = jup_quote(WSOL, token_mint, lamports)
     if not q: return None
     out_amount = int(q["outAmount"])
-    decimals = q.get("outputDecimals", 6)
+    decimals = get_token_decimals(token_mint)
     tokens = out_amount / (10 ** decimals)
     if tokens <= 0: return None
     eff_price = usd_amount / tokens
