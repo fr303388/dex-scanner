@@ -227,7 +227,7 @@ async function load() {
       const r = [];
       if (sc < needS) r.push(`分數${sc}<${needS}`);
       if (bl < needB) r.push(`買盤${bl}%<${needB}%`);
-      return r.length ? r.join('、') : '等Jupiter報價';
+      return r.length ? r.join('、') : '已達倉位上限';
     }
     document.getElementById('recommend').innerHTML = d.tokens.filter(t=>t.score>=3).slice(0,6).map((t,i)=>{
       const img = t.image ? `<img src="${t.image}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0" onerror="this.style.display='none'">` : '';
