@@ -679,7 +679,7 @@ def fetch_meme_coins():
     for tr in pf.get("trades", []): held_syms.add(tr.get("symbol",""))
     for tr in spf.get("trades", []): held_syms.add(tr.get("symbol",""))
     for sym, info in prev_seen.items():
-        if sym not in curr_symbols and sym not in existing_delisted and sym in held_syms:
+        if False and sym not in curr_symbols and sym not in existing_delisted and sym in held_syms:
             last_price = info.get("price", 0)
             peak = info.get("peak", last_price)
             crash_pct = round((last_price - peak) / peak * 100, 1) if peak > 0 else 0
