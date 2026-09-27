@@ -327,7 +327,7 @@ def fetch_meme_coins():
     PF_TP = 30.0
     PF_SL = -30.0
     PF_COOLDOWN = 360
-    PF_MAX_HOLD = 5400  # 持倉超過2小時則賣出（久未動）
+    PF_MAX_HOLD = 14400  # 最長持有4小時（gainzfeldt風格）
     pf.setdefault("blacklist", [])  # 虧錢賣出過的幣不再買
     pf["cooldown"] = {sym: ts for sym, ts in pf["cooldown"].items() if now_ts - ts < PF_COOLDOWN}
 
@@ -501,8 +501,8 @@ def fetch_meme_coins():
             # 幣不在熱門榜 → 直接查真實價格（不在榜 ≠ 死了）
             real_price = None
             try:
-                chain = pos.get("chain",""); addr = pos.get("address","")
-                if chain and addr:
+                chain = pos.get("chain","") or "sol"; addr = pos.get("address","")
+                if addr:
                     pr = requests.get(f"https://api.dexscreener.com/token-pairs/v1/{chain}/{addr}", timeout=5)
                     pairs = pr.json()
                     if pairs:
@@ -539,7 +539,7 @@ def fetch_meme_coins():
             cur_tok = next((t for t in all_tokens if t["symbol"] == pos["symbol"]), None)
             if cur_tok and entry_liq > 0 and cur_tok.get("liquidity",0) < entry_liq * 0.6:
                 sr = f"流動性逃離{RUG}"
-            elif held_secs > 300 and abs(pos["pnl_pct"]) < 2: sr = f"死幣不動{int(held_secs/60)}分"
+            elif held_secs > 1800 and pos["pnl_pct"] < 2: sr = f"死幣不動{int(held_secs/60)}分"
             elif held_secs > PF_MAX_HOLD: sr = f"久未動{int(held_secs/60)}分鐘"
         if sr:
             spf["cash"] += pos["current_value"]
