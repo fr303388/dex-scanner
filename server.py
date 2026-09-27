@@ -527,6 +527,34 @@ def clear_sim():
         save_sim(STATE["sim"])
     return jsonify({"ok": True})
 
+@app.route("/api/sell/<address>", methods=["POST"])
+def sell_one(address):
+    with LOCK:
+        sim = STATE["sim"]
+        now_ts = time.time()
+        now_str = datetime.now(UTC8).strftime("%m-%d %H:%M")
+        kept = []
+        for pos in sim["positions"]:
+            if pos["address"] == address:
+                sim["cash"] += pos["current_value"]
+                sim["trades"].append({
+                    "time": now_str, "symbol": pos["symbol"],
+                    "action": "SELL", "address": address,
+                    "buy_price": pos["buy_price"],
+                    "sell_price": pos["current_price"],
+                    "pnl": round(pos["pnl"], 2),
+                    "pnl_pct": pos["pnl_pct"],
+                    "held_min": int((now_ts - pos["buy_ts"])/60),
+                    "url": pos.get("url", ""),
+                    "reason": "手動賣出",
+                })
+                print(f"[MANUAL SELL] {pos['symbol']} {pos['pnl_pct']}%", flush=True)
+            else:
+                kept.append(pos)
+        sim["positions"] = kept
+        save_sim(sim)
+    return jsonify({"ok": True})
+
 # ============ 啟動 ============
 if __name__ == "__main__":
     STATE["sim"] = load_sim()

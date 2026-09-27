@@ -108,18 +108,23 @@ function holdStr(ts) {
 }
 
 function renderPositions(positions, containerId) {
+  const isSim = containerId === 'simPositions';
   document.getElementById(containerId).innerHTML = positions.map(p=>{
     const pnlCls = (p.pnl||0)>=0?'up':'down';
     const img = p.image ? `<img src="${p.image}" style="width:40px;height:40px;border-radius:50%;flex-shrink:0" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;border-radius:50%;background:#21262d;flex-shrink:0"></div>';
+    const btn = isSim && p.address ? `<button onclick="sellSim('${p.address}')" style="background:#da3633;border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px">賣出</button>` : '';
     return `<div class="pf-pos" style="display:flex;align-items:center;gap:10px">
       ${img}
       <div style="flex:1">
-        <div class="sym"><a href="${p.url}" target="_blank">${p.symbol}</a></div>
+        <div class="sym"><a href="${p.url}" target="_blank">${p.symbol}</a> ${btn}</div>
         <div class="detail" style="font-size:10px;color:#8b949e">買 ${fmtPrice(p.buy_price||0)} | 現 ${fmtPrice(p.current_price||0)}</div>
         <div class="pnl ${pnlCls}" style="font-size:12px">${(p.pnl||0)>=0?'+':''}$${(p.pnl||0).toFixed(2)} (${(p.pnl_pct||0)>=0?'+':''}${(p.pnl_pct||0)}%) <span style="color:#666;font-size:10px">持 ${holdStr(p.buy_ts)}</span></div>
       </div>
     </div>`;
   }).join('') || '<div style="color:#666;font-size:12px;grid-column:1/-1">尚無持倉</div>';
+}
+function sellSim(addr) {
+  fetch('/api/sell/'+addr, {method:'POST'}).then(()=>load());
 }
 
 function renderTrades(trades, containerId) {
