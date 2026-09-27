@@ -393,26 +393,30 @@ def run_sim(tokens, now_ts, now_str, first_seen):
     # 進場
     held_addr = {p["address"] for p in kept}
     candidates = []
+    rejected = []
     for t in tokens:
         addr = t["address"]
-        if not addr or addr in held_addr: continue
-        if addr in sim["cooldown"]: continue
-        # 首次看到時間（用 address）
+        if not addr: continue
+        if addr in held_addr: continue
+        if addr in sim["cooldown"]:
+            rejected.append((t, "冷卻中")); continue
         if addr not in first_seen:
             first_seen[addr] = now_ts
-        if now_ts - first_seen[addr] < 900: continue   # 觀察 15 分
+        if now_ts - first_seen[addr] < 900:
+            rejected.append((t, "觀察期")); continue
 
-        # 分級門檻
         liq = t["liquidity"]
         if liq >= LIQ_TIER1:
             min_score, min_br, max_impact = 5.0, 52, 2.0
         elif liq >= LIQ_TIER2:
             min_score, min_br, max_impact = 6.0, 55, 1.5
         else:
-            continue  # < $35K 不交易
+            rejected.append((t, f"流動性${(liq/1000).toFixed(0)}K<$35K")); continue
 
-        if t["score"] < min_score: continue
-        if t["buy_ratio"] < min_br: continue
+        if t["score"] < min_score:
+            rejected.append((t, f"分數{t['score']}<{min_score}")); continue
+        if t["buy_ratio"] < min_br:
+            rejected.append((t, f"買盤{t['buy_ratio']}%<{min_br}%")); continue
         t["_max_impact"] = max_impact
         candidates.append(t)
 
@@ -471,6 +475,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         print(f"[BUY] {t['symbol']} score={t['score']} impact={bq['impact_pct']}%", flush=True)
 
     sim["positions"] = kept
+    sim["rejected"] = [{"symbol": t["symbol"], "address": t["address"], "reason": r,
+                        "score": t["score"], "liq": t["liquidity"], "buy": t["buy_ratio"]}
+                       for t, r in rejected[:20]]
 
     # 統計
     sells = [t for t in sim["trades"] if t["action"] == "SELL"]
@@ -578,6 +585,9 @@ def sell_one(address):
             else:
                 kept.append(pos)
         sim["positions"] = kept
+    sim["rejected"] = [{"symbol": t["symbol"], "address": t["address"], "reason": r,
+                        "score": t["score"], "liq": t["liquidity"], "buy": t["buy_ratio"]}
+                       for t, r in rejected[:20]]
         save_sim(sim)
     return jsonify({"ok": True})
 
