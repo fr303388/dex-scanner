@@ -217,18 +217,31 @@ async function load() {
     renderPositions(spf.positions, 'simPositions');
     renderTrades(spf.trades, 'simTrades');
 
-    // 推薦
-    document.getElementById('recommend').innerHTML = d.tokens.filter(t=>t.score>=4).slice(0,5).map((t,i)=>{
+    // 推薦 — 顯示為什麼還沒進場
+    function whyNot(t) {
+      const L1=75000, L2=35000;
+      const bl = t.buy_ratio||0, sc = t.score||0, liq = t.liquidity||0;
+      if (liq < L2) return `流動性$${(liq/1000).toFixed(0)}K<$35K`;
+      let needS, needB;
+      if (liq >= L1) { needS=5; needB=52; } else { needS=6; needB=55; }
+      const r = [];
+      if (sc < needS) r.push(`分數${sc}<${needS}`);
+      if (bl < needB) r.push(`買盤${bl}%<${needB}%`);
+      return r.length ? r.join('、') : '等Jupiter報價';
+    }
+    document.getElementById('recommend').innerHTML = d.tokens.filter(t=>t.score>=3).slice(0,6).map((t,i)=>{
       const img = t.image ? `<img src="${t.image}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0" onerror="this.style.display='none'">` : '';
+      const wn = whyNot(t);
       return `<div class="rec-item" style="display:flex;align-items:center;gap:6px">
         <span class="rec-rank" style="color:#f0b429">#${i+1}</span>
         ${img}
         <span class="rec-name"><a href="${t.url}" target="_blank">${t.symbol}</a></span>
         <span class="rec-score">${t.score}分</span>
         <div style="display:flex;flex-wrap:wrap;gap:2px;flex:1">${renderTags(t.reasons)}</div>
+        <span style="color:#8b949e;font-size:11px;white-space:nowrap">${wn}</span>
         <span class="${t.change_24h>=0?'up':'down'}">${t.change_24h>=0?'+':''}${t.change_24h}%</span>
       </div>`;
-    }).join('') || '<div style="color:#8b949e;font-size:12px">目前沒有強推薦</div>';
+    }).join('') || '<div style="color:#8b949e;font-size:12px">目前沒有推薦</div>';
 
     // 潛力新股
     document.getElementById('potential').innerHTML = (d.potential||[]).map(t=>{
