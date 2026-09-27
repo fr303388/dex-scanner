@@ -22,6 +22,7 @@ SOL_USD = 150.0
 SCAN_INTERVAL = 15
 
 WSOL = "So11111111111111111111111111111111111111112"
+JUP_API_KEY = "jup_6565cc92e152fd2b40436cdd11c9386d443668d14136ec05a53e96de15a3f67b"
 SIM_FILE = "sim_portfolio.json"
 FIRST_SEEN_FILE = "first_seen.json"
 
@@ -74,7 +75,7 @@ def save_first_seen(d):
 def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
     """回傳 quote dict，失敗回傳 None"""
     try:
-        r = requests.get("https://api.jup.ag/swap/v1/quote", params={
+        r = requests.get("https://api.jup.ag/swap/v1/quote", headers={"x-api-key": JUP_API_KEY}, params={
             "inputMint": input_mint, "outputMint": output_mint,
             "amount": str(int(amount_lamports)), "slippageBps": str(slippage_bps),
         }, timeout=10)
