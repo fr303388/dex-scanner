@@ -218,7 +218,9 @@ async function load() {
     renderTrades(spf.trades, 'simTrades');
 
     // 推薦 — 顯示為什麼還沒進場
+    const heldAddrs = new Set((d.sim_portfolio?.positions||[]).map(p=>p.address));
     function whyNot(t) {
+      if (heldAddrs.has(t.address)) return '持倉中';
       const L1=75000, L2=35000;
       const bl = t.buy_ratio||0, sc = t.score||0, liq = t.liquidity||0;
       if (liq < L2) return `流動性$${(liq/1000).toFixed(0)}K<$35K`;
