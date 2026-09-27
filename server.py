@@ -1,5 +1,5 @@
 ﻿"""迷因幣雷達 - 含模擬交易 + 真實鏈上交易 (Solana Jupiter)"""
-import requests, time, json, base64, os, subprocess
+import requests, time, json, base64, os, subprocess, shutil
 from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, send_file, Response, request
 
@@ -52,6 +52,7 @@ SIM_PORTFOLIO_FILE = 'sim_portfolio.json'
 REC_FILE = r'C:\Users\ANGEL\Doubao\chats\2026-09-12\new-chat\dex_scanner\rec_tracker.json'
 PRIVKEY_FILE = r'C:\Users\ANGEL\Doubao\chats\2026-09-12\new-chat\dex_scanner\privkey.json'
 WsolMint = "So11111111111111111111111111111111111111112"
+PERM_BLACKLIST = set()
 
 # ============ Solana 鏈上交易 ============
 def load_keypair():
@@ -158,7 +159,17 @@ def save_portfolio(p):
 def load_sim_portfolio():
     try:
         with open(SIM_PORTFOLIO_FILE, "r") as f: return json.load(f)
-    except: return {"positions": [], "trades": [], "capital": 1000, "cash": 1000}
+    except json.JSONDecodeError:
+        # 保留原始損毀帳本供人工檢查，避免下一次儲存直接覆蓋證據。
+        backup = f"{SIM_PORTFOLIO_FILE}.corrupt-{int(time.time())}"
+        try:
+            shutil.copyfile(SIM_PORTFOLIO_FILE, backup)
+            print(f"[SIM] 帳本格式損毀，已備份至 {backup}", flush=True)
+        except Exception as e:
+            print(f"[SIM] 帳本備份失敗: {e}", flush=True)
+        return {"positions": [], "trades": [], "capital": 1000, "cash": 1000}
+    except:
+        return {"positions": [], "trades": [], "capital": 1000, "cash": 1000}
 
 def save_sim_portfolio(p):
     with open(SIM_PORTFOLIO_FILE, "w") as f: json.dump(p, f, ensure_ascii=False, indent=2)
@@ -183,19 +194,19 @@ def score_token(t):
     if h1 > 50: score -= 2; reasons.append("追高風險")
     elif h1 > 30: score -= 1; reasons.append("1h追高風險")
     elif h1 > 10: score += 1; reasons.append("1h上漲")
-    elif h1 < -10: score -= 2; reasons.append("1h暴跌")
     elif h1 < -30: score -= 3; reasons.append("1h崩盤")
+    elif h1 < -10: score -= 2; reasons.append("1h暴跌")
     if 10 < h24 <= 50: score += 2; reasons.append("健康上漲")
     elif 50 < h24 <= 150: score += 1; reasons.append("強勢噴發")
     elif h24 > 200: score -= 1; reasons.append("高位追風險")
-    elif h24 < -30: score -= 3; reasons.append("死亡螺旋")
     elif h24 < -50: score -= 5; reasons.append("已崩盤")
+    elif h24 < -30: score -= 3; reasons.append("死亡螺旋")
     if vol > 200000: score += 1.5; reasons.append("大量")
     elif vol > 50000: score += 0.5
     if liq > 50000: score += 1.5; reasons.append("流動性極足")
     elif liq > 30000: score += 1; reasons.append("流動性足")
-    elif liq < 10000: score -= 2; reasons.append("流動性低易RUG")
     elif liq < 5000: score -= 3; reasons.append("高風險RUG")
+    elif liq < 10000: score -= 2; reasons.append("流動性低易RUG")
     if br > 70: score += 1.5; reasons.append("買盤極強")
     elif br < 40: score -= 1.5; reasons.append("賣壓大")
     # 反洗盤：量/流動比 > 5 代表人氣造假
@@ -489,9 +500,17 @@ def fetch_meme_coins():
     spf.setdefault("cash", 1000)
     spf.setdefault("positions", [])
     spf.setdefault("cooldown", {})
-    SIM_BUY = 75; SIM_MAX = 8; PERM_BLACKLIST = set(); SIM_TP = 999.0; SIM_SL = -15.0; SIM_CD = 0
+    # V3 模擬：先保留資本，再驗證是否有正期望值。所有限制均只影響模擬帳戶。
+    SIM_BUY = 75
+    SIM_MAX = 5
+    SIM_MIN_SCORE = 5.0
+    SIM_MIN_LIQ = 75000
+    SIM_SL = -12.0
+    SIM_COOLDOWN = 6 * 3600
+    SIM_MAX_HOLD = 2 * 3600
     spf.setdefault("blacklist", [])
-    spf["cooldown"] = {sym: ts for sym, ts in spf["cooldown"].items() if now_ts - ts < SIM_CD}
+    # cooldown 儲存的是到期時間；舊版用 now-ts 判斷會讓未到期資料永久保留。
+    spf["cooldown"] = {key: ts for key, ts in spf["cooldown"].items() if ts > now_ts}
     for pos in spf["positions"]:
         current = next((t for t in all_tokens if t["symbol"] == pos["symbol"]), None)
         if current:
@@ -523,42 +542,42 @@ def fetch_meme_coins():
                 pos["miss_count"] = 0  # 查得到價格 = 還活著
         if "buy_ts" not in pos: pos["buy_ts"] = now_ts - 3600
         bp = pos["buy_price"]; cp = pos["current_price"]
-        if bp > 0 and cp > bp * 5: pos["current_price"] = bp * 5
-        elif bp > 0 and cp < bp / 5: pos["current_price"] = bp / 5
         pos["current_value"] = pos["shares"] * pos["current_price"]
         pos["pnl"] = pos["current_value"] - pos["invested"]
         pos["pnl_pct"] = round((pos["pnl"] / pos["invested"]) * 100, 1)
+        pos["peak_pct"] = max(pos.get("peak_pct", pos["pnl_pct"]), pos["pnl_pct"])
     kept = []
     for pos in spf["positions"]:
         sr = None
         held_secs = now_ts - pos.get("buy_ts", now_ts)
         if pos["pnl_pct"] >= 50 and not pos.get("half_sold"):
             half_value = pos["current_value"] / 2
+            half_invested = pos["invested"] / 2
+            half_pnl = round(half_value - half_invested, 2)
             spf["cash"] += half_value
             pos["shares"] /= 2
             pos["invested"] /= 2
             pos["half_sold"] = True
             spf["trades"].append({"time": now_str, "symbol": pos["symbol"], "action": "SELL HALF",
                 "buy_price": pos["buy_price"], "sell_price": pos["current_price"],
-                "pnl": round(half_value - pos["invested"],2), "pnl_pct": pos["pnl_pct"],
+                "pnl": half_pnl, "pnl_pct": pos["pnl_pct"],
                 "held_min": int(held_secs/60), "buy_score": pos.get("buy_score",0),
                 "entry_liq": pos.get("entry_liq",0),
                 "url": pos.get("url",""), "address": pos.get("address",""),
                 "reason": f"半獲利{pos['pnl_pct']}%"})
             print(f"[HALF] {pos['symbol']} +{pos['pnl_pct']}% sell half", flush=True)
-        if pos.get("_delisted"): sr = "下架死幣"
-        elif pos["pnl_pct"] >= SIM_TP: sr = f"停利+{pos['pnl_pct']}%"
+        if pos.get("_delisted"): sr = "下架或無有效報價"
         elif pos["pnl_pct"] <= SIM_SL: sr = f"停損{pos['pnl_pct']}%"
-        elif pos.get("peak_pct",0) >= 50 and pos["pnl_pct"] < 20: sr = f"鎖利出場{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
-        elif pos.get("peak_pct",0) >= 30 and pos["pnl_pct"] < pos["peak_pct"] * 0.90: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct", 0) >= 50 and pos["pnl_pct"] < 20: sr = f"鎖利出場{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct", 0) >= 30 and pos["pnl_pct"] <= pos["peak_pct"] - 20: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
         else:
             # RUG 偵測：入場流動性流失 >40%
             entry_liq = pos.get("entry_liq", 0)
             cur_tok = next((t for t in all_tokens if t["symbol"] == pos["symbol"]), None)
             if cur_tok and entry_liq > 0 and cur_tok.get("liquidity",0) < entry_liq * 0.6:
-                sr = f"流動性逃離{RUG}"
-            elif held_secs > 1800 and pos["pnl_pct"] < 2: sr = f"死幣不動{int(held_secs/60)}分"
-            elif held_secs > PF_MAX_HOLD: sr = f"久未動{int(held_secs/60)}分鐘"
+                sr = f"流動性流失{round((1-cur_tok.get('liquidity',0)/entry_liq)*100)}%"
+            elif held_secs > 2700 and pos["pnl_pct"] < 3: sr = f"45分未延續{pos['pnl_pct']}%"
+            elif held_secs > SIM_MAX_HOLD: sr = f"最長持有{int(held_secs/60)}分鐘"
         if sr:
             spf["cash"] += pos["current_value"]
             held_min = int(held_secs/60)
@@ -568,14 +587,24 @@ def fetch_meme_coins():
                 "held_min": held_min, "buy_score": pos.get("buy_score",0),
                 "entry_liq": pos.get("entry_liq",0),
                 "url": pos.get("url",""), "address": pos.get("address",""), "reason": sr})
-            spf["cooldown"][pos["symbol"]] = now_ts + 0 if pos["pnl"] < 0 else now_ts  # 公海不冷卻
-            # 虧錢不永久黑名單，只冷卻5分鐘
+            pos_key = pos.get("address") or pos["symbol"]
+            spf["cooldown"][pos_key] = now_ts + SIM_COOLDOWN
+            if pos["pnl"] < 0 and pos_key not in spf["blacklist"]:
+                spf["blacklist"].append(pos_key)
         else: kept.append(pos)
-    held = [p["symbol"] for p in kept]
-    fresh = [t for t in all_tokens if t["symbol"] not in held and t["symbol"] not in spf["cooldown"] and t["symbol"] not in spf.get("blacklist",[]) and t["symbol"] not in PERM_BLACKLIST and t["score"] >= 4 and t["price"] > 0 and t.get("buy_ratio",50) >= 40 and t.get("liquidity",0) > 30000 and (time.time() - first_seen_map.get(t["symbol"], 0)) > 900]
-    bought_syms = set(held)
+    held = {p.get("address") or p["symbol"] for p in kept}
+    fresh = [t for t in all_tokens
+        if (t.get("address") or t["symbol"]) not in held
+        and (t.get("address") or t["symbol"]) not in spf["cooldown"]
+        and (t.get("address") or t["symbol"]) not in spf.get("blacklist", [])
+        and t["score"] >= SIM_MIN_SCORE and t["price"] > 0
+        and t.get("buy_ratio", 50) >= 55 and t.get("liquidity", 0) >= SIM_MIN_LIQ
+        and (time.time() - first_seen_map.get(t["symbol"], 0)) > 900]
+    fresh.sort(key=lambda t: (t["score"], t.get("liquidity", 0), t.get("txns_24h", 0)), reverse=True)
+    bought_keys = set(held)
     for t in fresh:
-        if t["symbol"] in bought_syms: continue
+        token_key = t.get("address") or t["symbol"]
+        if token_key in bought_keys: continue
         if len(kept) >= SIM_MAX: break
         if spf["cash"] < SIM_BUY: break
         pair_addr = t.get("url","").rstrip("/").split("/")[-1]
@@ -583,7 +612,7 @@ def fetch_meme_coins():
             ok_w, wmsg = check_wash_addresses(pair_addr)
             if not ok_w:
                 print(f"[WASH SKIP] {t['symbol']} {wmsg}", flush=True)
-                bought_syms.add(t["symbol"])
+                bought_keys.add(token_key)
                 continue
         # 買前確認 DexScreener 查得到價格
         if t.get("address"):
@@ -592,13 +621,13 @@ def fetch_meme_coins():
                 vpairs = vr.json().get("pairs", [])
                 if not vpairs:
                     print(f"[SKIP] {t['symbol']} DexScreener 查無此幣", flush=True)
-                    bought_syms.add(t["symbol"])
+                    bought_keys.add(token_key)
                     continue
             except: pass
         real_p = get_real_buy_price(t["address"], t["price"])
         buy_amt = SIM_BUY  # 取消加碼，固定倉位避免追高
         if spf["cash"] < buy_amt: continue
-        bought_syms.add(t["symbol"])
+        bought_keys.add(token_key)
         kept.append({"symbol": t["symbol"], "buy_price": real_p, "buy_time": now_str,
             "buy_ts": now_ts, "entry_liq": t.get("liquidity",0),
             "invested": buy_amt, "shares": buy_amt/real_p, "url": t["url"],
