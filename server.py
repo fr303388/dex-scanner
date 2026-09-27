@@ -366,7 +366,7 @@ def fetch_meme_coins():
         else:
             held_secs = now_ts - pos.get("buy_ts", now_ts)
         # +100% 賣一半落袋
-        if pos["pnl_pct"] >= 100 and not pos.get("half_sold"):
+        if pos["pnl_pct"] >= 50 and not pos.get("half_sold"):
             half_value = pos["current_value"] / 2
             spf["cash"] += half_value
             pos["shares"] /= 2
@@ -551,8 +551,8 @@ def fetch_meme_coins():
         if pos.get("_delisted"): sr = "下架死幣"
         elif pos["pnl_pct"] >= SIM_TP: sr = f"停利+{pos['pnl_pct']}%"
         elif pos["pnl_pct"] <= SIM_SL: sr = f"停損{pos['pnl_pct']}%"
-        elif pos.get("peak_pct",0) >= 20 and pos["pnl_pct"] <= 0: sr = f"保本出場(峰{pos['peak_pct']}%)"
-        elif pos.get("peak_pct",0) >= 30 and pos["pnl_pct"] < pos["peak_pct"] * 0.80: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct",0) >= 50 and pos["pnl_pct"] < 20: sr = f"鎖利出場{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
+        elif pos.get("peak_pct",0) >= 30 and pos["pnl_pct"] < pos["peak_pct"] * 0.90: sr = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
         else:
             # RUG 偵測：入場流動性流失 >40%
             entry_liq = pos.get("entry_liq", 0)
