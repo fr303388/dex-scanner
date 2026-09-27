@@ -311,14 +311,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             except:
                 _handle_miss(pos, now_ts)
 
-        # 嘗試 Jupiter 賣出報價，失敗用 DexScreener 價格
-        dec = pos.get("decimals", 6)
-        sq = get_sell_value_usd(addr, pos["tokens"], dec)
-        if sq and sq["usd"] > 0:
-            pos["current_value"] = sq["usd"]
-            pos["sell_impact"] = sq["impact_pct"]
-        else:
-            pos["current_value"] = pos["tokens"] * pos["current_price"]
+        # 用 DexScreener 價格算市值（Jupiter decimals 不可靠）
+        pos["current_value"] = pos["tokens"] * pos["current_price"]
         pos["sell_quote_usd"] = round(pos["current_value"], 2)
 
         pos["pnl"] = pos["current_value"] - pos["invested"]
