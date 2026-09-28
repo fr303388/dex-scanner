@@ -1,5 +1,25 @@
 """迷因幣雷達 V3.1 — 背景自主掃描、mint address 管理、Jupiter 可成交報價"""
-import requests, time, json, os, subprocess, shutil, threading
+import requests, time, json, os, subprocess, shutil, threading, csv
+DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
+def log_decisions(tokens, sim, rejected, now_ts):
+    file_exists = os.path.exists(DECISION_LOG)
+    with open(DECISION_LOG, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if not file_exists:
+            w.writerow(["ts","time","address","symbol","score","price","h1","h24",
+                        "volume","liquidity","buy_ratio","txns","decision","reason"])
+        held = {p["address"] for p in sim["positions"]}
+        rej_map = {rt["address"]: r for rt, r in rejected}
+        for t in tokens:
+            addr = t["address"]
+            decision = "HELD" if addr in held else "REJECTED"
+            if addr in sim.get("cooldown", {}): decision = "COOLDOWN"
+            w.writerow([int(now_ts), time.strftime("%m-%d %H:%M"), addr,
+                        t["symbol"], t["score"], t["price"],
+                        t.get("change_1h",0), t.get("change_24h",0),
+                        t.get("volume_24h",0), t.get("liquidity",0),
+                        t.get("buy_ratio",0), t.get("txns_24h",0),
+                        decision, rej_map.get(addr,"")])
 from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, send_file, Response, request
 
