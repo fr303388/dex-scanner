@@ -52,6 +52,9 @@ def log_decisions(tokens, sim, rejected, now_ts, entered):
                         decision, rej_map.get(addr,"")])
 from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, send_file, Response, request
+import cohort          # module ref, NOT `from cohort import COHORT` --
+                        # load_cohort_state() REBINDS cohort.COHORT, so a
+                        # by-name import would keep pointing at the old dict
 
 app = Flask(__name__)
 UTC8 = timezone(timedelta(hours=8))
@@ -76,6 +79,7 @@ def get_sol_price():
         SOL_USD = float(r.json()["data"]["So11111111111111111111111111111111111111112"]["price"])
     except: pass
 SCAN_INTERVAL = 15
+CYCLE = 0                      # cohort poll runs every 2nd cycle (~30s)
 
 WSOL = "So11111111111111111111111111111111111111112"
 import os
@@ -745,6 +749,12 @@ def scan_cycle():
         run_sim(tokens, now_ts, now_str, first_seen)
         save_first_seen(first_seen)
         save_sim(STATE["sim"])
+        # ---- cohort: independent, censoring-free population tracking ----
+        global CYCLE
+        CYCLE += 1
+        skip = cohort.seed_cohort(tokens, now_ts)
+        if CYCLE % 2 == 0:
+            cohort.poll_cohort(now_ts)
         STATE["tokens"] = tokens[:25]
         STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
     except Exception as e:
@@ -829,6 +839,9 @@ def sell_one(address):
 
 # ============ 啟動 ============
 if __name__ == "__main__":
+    cohort.load_cohort_state()
+    cohort.init_cohort_csv()
+    print(f"[cohort] ready, {len(cohort.COHORT)} members restored", flush=True)
     STATE["sim"] = load_sim()
     load_circuit(STATE["sim"])
     t = threading.Thread(target=bg_loop, daemon=True)

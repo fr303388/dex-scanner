@@ -1,8 +1,19 @@
+# ---- runtime data: regenerable, grows without bound ----
+*.csv
+*.csv.bak-*
+*.csv.corrupt-*
+*.csv.pre-restart-*
+*.log
+*.log.err
 *.json
+*.json.tmp
 *.json.corrupt-*
-*.bak
-*.env
+
+# ---- secrets ----
+.env
 privkey*
 *.key
+
+# ---- python ----
 __pycache__/
 *.pyc
