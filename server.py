@@ -223,6 +223,7 @@ def get_buy_quote(token_mint, usd_amount=SIM_BUY_USD):
     if not q: return None
     out_amount = int(q["outAmount"])
     decimals = get_token_decimals(token_mint)
+    if decimals is None: return None
     tokens = out_amount / (10 ** decimals)
     if tokens <= 0: return None
     eff_price = usd_amount / tokens
@@ -681,7 +682,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "url": t.get("url", ""),
             "image": t.get("image", ""),
             "miss_count": 0,
-            "peak_pct": 0,  # set on first update
+            "peak_pct": 0,
         })
         sim["trades"].append({
             "time": now_str, "symbol": t["symbol"],
