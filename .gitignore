@@ -1,0 +1,8 @@
+*.json
+*.json.corrupt-*
+*.bak
+*.env
+privkey*
+*.key
+__pycache__/
+*.pyc
