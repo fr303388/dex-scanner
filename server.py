@@ -509,6 +509,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "held_min": int(held / 60),
                 "buy_score": pos.get("buy_score", 0),
                 "sell_impact": pos.get("sell_impact", 0),
+                "mfe": round(pos.get("mfe", 0), 1),
+                "mae": round(pos.get("mae", 0), 1),
                 "url": pos.get("url", ""),
                 "reason": reason,
             })
