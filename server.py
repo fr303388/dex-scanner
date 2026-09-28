@@ -28,7 +28,14 @@ def get_sol_price():
 SCAN_INTERVAL = 15
 
 WSOL = "So11111111111111111111111111111111111111112"
-JUP_API_KEY = "jup_6565cc92e152fd2b40436cdd11c9386d443668d14136ec05a53e96de15a3f67b"
+import os
+JUP_API_KEY = os.environ.get("JUP_API_KEY", "")
+if not JUP_API_KEY:
+    try:
+        for line in open(".env", encoding="utf-8"):
+            if line.startswith("JUP_API_KEY="):
+                JUP_API_KEY = line.strip().split("=",1)[1]
+    except: pass
 SIM_FILE = "sim_portfolio.json"
 FIRST_SEEN_FILE = "first_seen.json"
 
