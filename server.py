@@ -28,7 +28,7 @@ def log_decisions(tokens, sim, rejected, now_ts, entered):
         w = csv.writer(f)
         if not file_exists:
             w.writerow(["ts","time","address","symbol","score","price","h1","h24",
-                        "volume","liquidity","buy_ratio","txns","decision","reason"])
+                        "volume","liquidity","buy_ratio","txns_24h","decision","reason"])
         held = {p["address"] for p in sim["positions"]}
         entered = set(entered or ())
         rej_map = {rt["address"]: r for rt, r in rejected}
