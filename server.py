@@ -9,9 +9,7 @@ def log_decisions(tokens, sim, rejected, now_ts):
             w.writerow(["ts","time","address","symbol","score","price","h1","h24",
                         "volume","liquidity","buy_ratio","txns","decision","reason"])
         held = {p["address"] for p in sim["positions"]}
-        entered = set()
-        for tr in sim.get("trades", []):
-            if tr.get("action") == "BUY": entered.add(tr["address"])
+        entered = set(p["address"] for p in kept)
         rej_map = {rt["address"]: r for rt, r in rejected}
         for t in tokens:
             addr = t["address"]
@@ -167,7 +165,12 @@ def check_trigger(addr, t, now_ts):
             return True, "回踩再起"
     return False, "等待觸發"
 
-CIRCUIT = {"consecutive_losses": 0, "paused_until": 0, "day_pnl": 0, "day_date": ""}  # addr -> first pass timestamp
+CIRCUIT = {"consecutive_losses": 0, "paused_until": 0, "day_pnl": 0, "day_date": ""}
+def save_circuit(sim):
+    sim["circuit"] = CIRCUIT
+def load_circuit(sim):
+    global CIRCUIT
+    if "circuit" in sim: CIRCUIT = sim["circuit"]  # addr -> first pass timestamp
 DECIMALS_CACHE = {}
 def get_token_decimals(mint):
     if mint in DECIMALS_CACHE: return DECIMALS_CACHE[mint]
@@ -567,17 +570,17 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if now_cycle - PENDING[addr] < 15:
             rejected.append((t, "確認中")); continue
 
-        # 鏈上風險檢查
-        ok, risk_reason = check_onchain_risk(addr)
-        if not ok:
-            rejected.append((t, risk_reason)); continue
-
-        # 熔斷檢查
+        # 熔斷檢查（最前面，省RPC）
         today = time.strftime("%Y-%m-%d")
         if CIRCUIT["day_date"] != today:
             CIRCUIT["day_date"] = today; CIRCUIT["day_pnl"] = 0
         if now_ts < CIRCUIT["paused_until"]:
             rejected.append((t, "熔斷暫停")); continue
+
+        # 鏈上風險檢查
+        ok, risk_reason = check_onchain_risk(addr)
+        if not ok:
+            rejected.append((t, risk_reason)); continue
         # 排名與觸發分離
         triggered, trig_reason = check_trigger(addr, t, now_ts)
         if not triggered:
@@ -593,7 +596,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         addr = t["address"]
 
         # 部位大小：min($75, 流動性×0.5%)
-        buy_usd = min(SIM_BUY_USD, t["liquidity"] * 0.005)
+        buy_usd = min(SIM_BUY_USD, t["liquidity"] * 0.0015)
         # Jupiter 買入報價
         bq = get_buy_quote(addr, buy_usd)
         if not bq:
@@ -766,8 +769,9 @@ def sell_one(address):
 # ============ 啟動 ============
 if __name__ == "__main__":
     STATE["sim"] = load_sim()
+    load_circuit(STATE["sim"])
     t = threading.Thread(target=bg_loop, daemon=True)
     t.start()
     print("V3.1 background scanner started", flush=True)
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+    app.run(host="127.0.0.1", port=port, debug=False, threaded=True)
