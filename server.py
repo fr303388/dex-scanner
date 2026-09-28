@@ -287,6 +287,7 @@ def check_onchain_risk(addr):
         }, timeout=8)
         j = r.json()
         if "error" in j:
+            ONCHAIN_FAIL[addr] = time.time() + 300
             return None, "RPC不可用"
         info = j["result"]["value"]["data"]["parsed"]["info"]
         if info.get("mintAuthority"):
