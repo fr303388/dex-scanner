@@ -62,7 +62,12 @@ if not JUP_API_KEY:
 SIM_FILE = "sim_portfolio.json"
 FIRST_SEEN_FILE = "first_seen.json"
 
-GMGN_KEY = "gmgn_solbscbaseethmonadtron"
+GMGN_KEY = os.environ.get("GMGN_API_KEY", "")
+if not GMGN_KEY:
+    try:
+        for line in open(".env", encoding="utf-8"):
+            if line.startswith("GMGN_API_KEY="): GMGN_KEY = line.strip().split("=",1)[1]
+    except: pass
 GMGN_NODE = r"C:\Users\ANGEL\AppData\Local\Doubao\User Data\sandbox_runtime\bases\c98c5042338ed152c6f10ecd8591889f\node\node.exe"
 GMGN_CLI = r"C:\Users\ANGEL\AppData\Local\Doubao\User Data\sandbox_runtime\bases\c98c5042338ed152c6f10ecd8591889f\node\node_modules\gmgn-cli\dist\index.js"
 
