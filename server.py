@@ -122,6 +122,15 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
 
 PENDING = {}
 TRIGGER_TRACK = {}  # addr -> list of (ts, price, volume) snapshots
+def update_trigger_history(tokens, now_ts):
+    for t in tokens:
+        addr = t["address"]
+        if not addr: continue
+        hist = TRIGGER_TRACK.setdefault(addr, [])
+        hist.append((now_ts, t["price"], t.get("volume_24h", 0)))
+        cutoff = now_ts - 1800
+        while hist and hist[0][0] < cutoff: hist.pop(0)
+
 def check_trigger(addr, t, now_ts):
     """排名與觸發分離：score 通過後，等突破或回踩再起才進場"""
     hist = TRIGGER_TRACK.setdefault(addr, [])
@@ -490,7 +499,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "reason": reason,
             })
             # 下架/rug → 永久黑名單；其他出場 → 24小時冷卻
-            if "下架" in reason or "rug" in reason.lower():
+            if "下架" in reason or "rug" in reason.lower() or "流動性流失" in reason:
                 if pos["address"] not in sim["blacklist"]:
                     sim["blacklist"].append(pos["address"])
             else:
@@ -572,8 +581,10 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if sim["cash"] < SIM_BUY_USD: break
         addr = t["address"]
 
+        # 部位大小：min($75, 流動性×0.5%)
+        buy_usd = min(SIM_BUY_USD, t["liquidity"] * 0.005)
         # Jupiter 買入報價
-        bq = get_buy_quote(addr, SIM_BUY_USD)
+        bq = get_buy_quote(addr, buy_usd)
         if not bq:
             t["reject_reason"] = "Jupiter無報價"
             print(f"[SKIP] {t['symbol']} 無買入報價", flush=True)
@@ -655,15 +666,20 @@ def _handle_miss(pos, now_ts):
 
 # ============ 背景迴圈 ============
 def scan_cycle():
-    now_ts = time.time()
-    now_str = datetime.now(UTC8).strftime("%m-%d %H:%M")
-    first_seen = load_first_seen()
-    tokens = fetch_tokens()
-    run_sim(tokens, now_ts, now_str, first_seen)
-    save_first_seen(first_seen)
-    save_sim(STATE["sim"])
-    STATE["tokens"] = tokens[:25]
-    STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
+    try:
+        now_ts = time.time()
+        tokens = fetch_tokens()
+        update_trigger_history(tokens, now_ts)
+        now_str = datetime.now(UTC8).strftime("%m-%d %H:%M")
+        first_seen = load_first_seen()
+        run_sim(tokens, now_ts, now_str, first_seen)
+        save_first_seen(first_seen)
+        save_sim(STATE["sim"])
+        STATE["tokens"] = tokens[:25]
+        STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
+    except Exception as e:
+        import traceback
+        print(f"[BG] error: {e}\n{traceback.format_exc()}", flush=True)
 
 def bg_loop():
     get_sol_price()
