@@ -1,7 +1,28 @@
 """迷因幣雷達 V3.1 — 背景自主掃描、mint address 管理、Jupiter 可成交報價"""
 import requests, time, json, os, subprocess, shutil, threading, csv
 DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
-def log_decisions(tokens, sim, rejected, now_ts, kept):
+TRAJECTORY_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trajectory.csv")
+def log_trajectory(pos, now_ts):
+    """每個循環記錄持倉狀態"""
+    file_exists = os.path.exists(TRAJECTORY_LOG)
+    with open(TRAJECTORY_LOG, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if not file_exists:
+            w.writerow(["ts","time","address","symbol","price","pnl_pct","mfe","mae",
+                        "peak_pct","current_value","sell_impact","held_min"])
+        held = (now_ts - pos.get("buy_ts", now_ts)) / 60
+        w.writerow([int(now_ts), time.strftime("%m-%d %H:%M:%S"),
+                    pos["address"], pos["symbol"], pos.get("current_price",0),
+                    pos.get("pnl_pct",0), pos.get("mfe",0), pos.get("mae",0),
+                    pos.get("peak_pct",0), pos.get("current_value",0),
+                    pos.get("sell_impact",0), round(held,1)])
+def log_decisions(tokens, sim, rejected, now_ts, entered):
+    """entered = 本輪「實際成交」的 address 集合。
+
+    為什麼不能用 kept 代替：呼叫端在呼叫本函式之前已經執行
+    sim["positions"] = kept，兩者是同一個清單物件，所以 kept 的位址集合
+    與 held 完全相同，判斷式會永遠先命中 HELD，ENTERED 永遠不會被寫出。
+    """
     file_exists = os.path.exists(DECISION_LOG)
     with open(DECISION_LOG, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -9,12 +30,18 @@ def log_decisions(tokens, sim, rejected, now_ts, kept):
             w.writerow(["ts","time","address","symbol","score","price","h1","h24",
                         "volume","liquidity","buy_ratio","txns","decision","reason"])
         held = {p["address"] for p in sim["positions"]}
-        entered = set(p["address"] for p in kept)
+        entered = set(entered or ())
         rej_map = {rt["address"]: r for rt, r in rejected}
         for t in tokens:
             addr = t["address"]
-            decision = "HELD" if addr in held else ("ENTERED" if addr in entered else "REJECTED")
-            if addr in sim.get("cooldown", {}): decision = "COOLDOWN"
+            if addr in entered:
+                decision = "ENTERED"          # 本輪成交（同時也會在 held 裡）
+            elif addr in held:
+                decision = "HELD"
+            else:
+                decision = "REJECTED"
+            if addr in sim.get("cooldown", {}) and addr not in entered:
+                decision = "COOLDOWN"
             w.writerow([int(now_ts), time.strftime("%m-%d %H:%M"), addr,
                         t["symbol"], t["score"], t["price"],
                         t.get("change_1h",0), t.get("change_24h",0),
@@ -224,7 +251,9 @@ def fetch_gmgn():
         out = subprocess.run([GMGN_NODE, GMGN_CLI, "market", "trending",
                               "--chain", "sol", "--interval", "1h",
                               "--limit", "50", "--raw"],
-                             capture_output=True, text=True, timeout=20, env=env)
+                             capture_output=True, text=True,
+                             encoding="utf-8", errors="replace",
+                             timeout=20, env=env)
         ranks = json.loads(out.stdout).get("data", {}).get("rank", [])
         gm = {}
         for r in ranks:
@@ -469,6 +498,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         # MFE/MAE tracking
         pos["mfe"] = max(pos.get("mfe", 0), pos["pnl_pct"])
         pos["mae"] = min(pos.get("mae", 0), pos["pnl_pct"])
+        log_trajectory(pos, now_ts)
         # 記錄價格走勢（最多30點）
         if "hist" not in pos: pos["hist"] = []
         pos["hist"].append(round(pos["current_price"], 8))
@@ -486,7 +516,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             reason = f"停損{pos['pnl_pct']}%"
         elif pos.get("peak_pct", 0) >= 50 and pos["pnl_pct"] < 20:
             reason = f"鎖利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
-        elif pos.get("peak_pct", 0) >= 30 and pos["pnl_pct"] <= pos["peak_pct"] - 20:
+        elif pos.get("peak_pct", 0) >= 15 and pos["pnl_pct"] <= pos["peak_pct"] - 10:
             reason = f"移動停利{pos['pnl_pct']}%(峰{pos['peak_pct']}%)"
         else:
             # 流動性流失
@@ -546,8 +576,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         addr = t["address"]
         if not addr: continue
         if addr in held_addr: continue
-        if addr in sim["cooldown"]:
-            rejected.append((t, "冷卻中")); continue
+        if addr in sim["cooldown"] or addr in sim.get("blacklist", []):
+            rejected.append((t, "冷卻中/黑名單")); continue
         # 幣齡檢查
         pc = t.get("pair_created", 0)
         if pc > 1e11: age_sec = now_ts - pc / 1000
@@ -568,7 +598,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if liq >= LIQ_TIER1:
             min_score, min_br, max_impact = 5.0, 52, 2.0
         elif liq >= LIQ_TIER2:
-            min_score, min_br, max_impact = 6.0, 55, 1.5
+            min_score, min_br, max_impact = 5.0, 52, 1.5
         else:
             rejected.append((t, f"流動性${int(liq/1000)}K<$35K")); continue
 
@@ -605,6 +635,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
 
     candidates.sort(key=lambda x: (x["score"], x["liquidity"]), reverse=True)
 
+    entered_this_cycle = set()   # 本輪實際成交（給 log_decisions 用）
     for t in candidates:
         if len(kept) >= SIM_MAX_POS: break
         buy_usd = min(SIM_BUY_USD, t["liquidity"] * 0.0015)
@@ -617,11 +648,13 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         bq = get_buy_quote(addr, buy_usd)
         if not bq:
             t["reject_reason"] = "Jupiter無報價"
+            rejected.append((t, "Jupiter無報價"))   # 進場後才失敗 — 也要進日誌
             print(f"[SKIP] {t['symbol']} 無買入報價", flush=True)
             continue
         max_imp = t.get("_max_impact", 2.0)
         if bq["impact_pct"] > max_imp:
             t["reject_reason"] = f"衝擊{bq['impact_pct']}%>{max_imp}%"
+            rejected.append((t, t["reject_reason"]))
             print(f"[SKIP] {t['symbol']} 衝擊{bq['impact_pct']}%>{max_imp}%", flush=True)
             continue
 
@@ -629,6 +662,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         eff_price = bq["price_usd"] if bq["price_usd"] > 0 else t["price"]
         tokens_bought = buy_usd / eff_price
         sim["cash"] -= buy_usd
+        entered_this_cycle.add(addr)
         kept.append({
             "address": addr,
             "symbol": t["symbol"],
@@ -685,7 +719,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
     sim["total_invested"] = round(sum(p["invested"] for p in kept), 2)
     sim["total_value"] = round(total_value, 2)
     sim["capital"] = SIM_CAPITAL
-    log_decisions(tokens, sim, rejected, now_ts, kept)
+    log_decisions(tokens, sim, rejected, now_ts, entered_this_cycle)
 
 def _handle_miss(pos, now_ts):
     held = now_ts - pos.get("buy_ts", now_ts)
