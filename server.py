@@ -685,7 +685,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "url": t.get("url", ""),
             "image": t.get("image", ""),
             "miss_count": 0,
-            "peak_pct": 0,
+            
         })
         sim["trades"].append({
             "time": now_str, "symbol": t["symbol"],
