@@ -1,0 +1,329 @@
+{
+  "cash": 907.6793101000001,
+  "positions": [
+    {
+      "address": "98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "symbol": "PAID",
+      "buy_price": 0.036971632010840735,
+      "current_price": 0.038033235748173064,
+      "buy_ts": 1790569909.7723114,
+      "buy_time": "09-28 12:31",
+      "invested": 75,
+      "tokens": 2028.5823460000001,
+      "decimals": 6,
+      "buy_score": 5.0,
+      "entry_liq": 2606090,
+      "buy_impact": 0.116,
+      "jup_buy_price": 0.036971632010840735,
+      "url": "https://gmgn.ai/sol/token/98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "image": "https://gmgn.ai/external-res/c04bf776e08f0d7716db14c7eaa4ba81_v2.webp",
+      "miss_count": 0,
+      "peak_pct": 2.4,
+      "current_value": 77.15355059999999,
+      "sell_impact": 0.563,
+      "sell_quote_usd": 77.15,
+      "pnl": 1.7785505999999884,
+      "pnl_pct": 2.4,
+      "mfe": 2.4,
+      "mae": -0.9,
+      "hist": [
+        0.03725642,
+        0.03730768,
+        0.03731742,
+        0.03730233,
+        0.03729735,
+        0.03738152,
+        0.03734753,
+        0.03734977,
+        0.03734863,
+        0.03737953,
+        0.03737497,
+        0.03747763,
+        0.03758542,
+        0.03769511,
+        0.03769511,
+        0.03777294,
+        0.03777732,
+        0.03776999,
+        0.03784718,
+        0.03772849,
+        0.03796133,
+        0.03798639,
+        0.03797271,
+        0.03804235,
+        0.03793896,
+        0.03804112,
+        0.03800227,
+        0.03796886,
+        0.03799542,
+        0.03803324
+      ]
+    }
+  ],
+  "trades": [
+    {
+      "time": "09-28 11:37",
+      "symbol": "BOB",
+      "action": "BUY",
+      "address": "E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "buy_price": 0.0004962813970307454,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "buy_impact": 1.316,
+      "jup_buy_price": 0.0004962813970307454,
+      "url": "https://gmgn.ai/sol/token/E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "reason": "score=6.0 衝擊1.316% [Jup原始$0.000496]"
+    },
+    {
+      "time": "09-28 11:49",
+      "symbol": "BOB",
+      "action": "SELL",
+      "address": "E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "buy_price": 0.0004962813970307454,
+      "sell_price": 0.0004392457115674503,
+      "pnl": -8.99,
+      "pnl_pct": -12.0,
+      "held_min": 12,
+      "buy_score": 6.0,
+      "sell_impact": 1.126,
+      "mfe": 23.1,
+      "mae": -12.0,
+      "url": "https://gmgn.ai/sol/token/E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "reason": "停損-12.0%"
+    },
+    {
+      "time": "09-28 12:07",
+      "symbol": "INSTA",
+      "action": "BUY",
+      "address": "6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "buy_price": 0.0014957361000141867,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "buy_impact": 1.059,
+      "jup_buy_price": 0.0014957361000141867,
+      "url": "https://gmgn.ai/sol/token/6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "reason": "score=7.0 衝擊1.059% [Jup原始$0.001496]"
+    },
+    {
+      "time": "09-28 12:16",
+      "symbol": "INSTA",
+      "action": "SELL",
+      "address": "6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "buy_price": 0.0014957361000141867,
+      "sell_price": 0.0013222061344769457,
+      "pnl": -9.08,
+      "pnl_pct": -12.1,
+      "held_min": 9,
+      "buy_score": 7.0,
+      "buy_impact": 1.059,
+      "sell_impact": 0.471,
+      "mfe": 1.7,
+      "mae": -12.1,
+      "url": "https://gmgn.ai/sol/token/6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "reason": "停損-12.1% (最高+1.7%)"
+    },
+    {
+      "time": "09-28 12:31",
+      "symbol": "PAID",
+      "action": "BUY",
+      "address": "98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "buy_price": 0.036971632010840735,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "buy_impact": 0.116,
+      "jup_buy_price": 0.036971632010840735,
+      "url": "https://gmgn.ai/sol/token/98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "reason": "score=5.0 衝擊0.116% [Jup原始$0.036972]"
+    }
+  ],
+  "cooldown": {
+    "E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump": 1790653780.4384356,
+    "6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump": 1790655379.115059
+  },
+  "blacklist": [],
+  "rejected": [
+    {
+      "symbol": "e/acc",
+      "address": "CbcyNo7m1amFWqEQm2m4PLv1UNvpcL3C1Ujm6AkzpKoU",
+      "reason": "買盤46%<52%",
+      "score": 5.0,
+      "liq": 488855,
+      "buy": 46
+    },
+    {
+      "symbol": "STONK",
+      "address": "6GmAFSYs4gk3FDao5FzzySQpPZaWsa4rUJHacpMpUNgx",
+      "reason": "等待觸發",
+      "score": 5.0,
+      "liq": 2344520,
+      "buy": 68
+    },
+    {
+      "symbol": "CLAUDECHAN",
+      "address": "AjxqTiS6TnK75xG6pWAMJgNQuhkip3LzN36uy2wBbwmH",
+      "reason": "流動性$33K<$35K",
+      "score": 4.5,
+      "liq": 33039,
+      "buy": 58
+    },
+    {
+      "symbol": "SJ",
+      "address": "A8rzp7TJbkjrozzeHRurh2qDCLAg3L4KsCv8wDuGpump",
+      "reason": "幣齡167s",
+      "score": 3.5,
+      "liq": 20994,
+      "buy": 58
+    },
+    {
+      "symbol": "discat",
+      "address": "7Zr7D2iyR5AiNYvXz5kSerRmivRNNWGbLBkM5kfEpump",
+      "reason": "分數3.0<6.0",
+      "score": 3.0,
+      "liq": 39936,
+      "buy": 84
+    },
+    {
+      "symbol": "BYTE",
+      "address": "CyovMnzMaKGApYsnm55d8rNWhEkskPSidKswnhgzMkGm",
+      "reason": "流動性$29K<$35K",
+      "score": 2.5,
+      "liq": 29597,
+      "buy": 58
+    },
+    {
+      "symbol": "BEZEL",
+      "address": "4RLhqc1jfpMLhtALMeUeVeJ5vySyL6eQca4cBjgCpump",
+      "reason": "流動性$32K<$35K",
+      "score": 2.5,
+      "liq": 32770,
+      "buy": 59
+    },
+    {
+      "symbol": "GG",
+      "address": "GGXYJYzk6VAD38doPqUJpJ3pzPJDjDXz4JtmdiSTzox",
+      "reason": "幣齡124s",
+      "score": 2,
+      "liq": 18599,
+      "buy": 58
+    },
+    {
+      "symbol": "r/acc",
+      "address": "GAiNsyzxypevTDHxdf42wU55GeVbGuwDEeb3Ca8mpump",
+      "reason": "流動性$10K<$35K",
+      "score": 1.5,
+      "liq": 10729,
+      "buy": 55
+    },
+    {
+      "symbol": "REGGIE",
+      "address": "CxZE7ySfy94rpQFbRWpezjC7YfQrotrckPD9fVv1pump",
+      "reason": "流動性$10K<$35K",
+      "score": 1.5,
+      "liq": 10808,
+      "buy": 53
+    },
+    {
+      "symbol": "SLOPCANNON",
+      "address": "9xdPSB46j7zgcr4BxrhSdkr89pK1miN6K4fYKMjiKZ4U",
+      "reason": "流動性$10K<$35K",
+      "score": 1.5,
+      "liq": 10658,
+      "buy": 55
+    },
+    {
+      "symbol": "Wheel",
+      "address": "8sL3pqc1Ppsy7NN2U2f1dVUDK12KZ4HWHsuiiBMPpump",
+      "reason": "流動性$11K<$35K",
+      "score": 1.5,
+      "liq": 11932,
+      "buy": 57
+    },
+    {
+      "symbol": "BORED",
+      "address": "DHLg2yqpmWtCBXqoZhfVdUj5sZqmRCDioeewHC26a4SF",
+      "reason": "流動性$11K<$35K",
+      "score": 1.5,
+      "liq": 11349,
+      "buy": 55
+    },
+    {
+      "symbol": "SIDEKINU",
+      "address": "5b9xTUBEPTWBHhKNRp7WWP5FDEtDyDBEv9P2yij7pump",
+      "reason": "分數1.0<6.0",
+      "score": 1.0,
+      "liq": 41746,
+      "buy": 73
+    },
+    {
+      "symbol": "SLOPCANNON",
+      "address": "J37h1Cg7bbpkA63rScD5wTzXiZWzqsnYgU15qZyqAPSW",
+      "reason": "流動性$13K<$35K",
+      "score": 1,
+      "liq": 13606,
+      "buy": 60
+    },
+    {
+      "symbol": "DIAMOND",
+      "address": "8xzeMhd2Uy2AWQeTGaMonjvsmfWGnkiuYkzcuuzSpump",
+      "reason": "流動性$18K<$35K",
+      "score": 0.5,
+      "liq": 18083,
+      "buy": 13
+    },
+    {
+      "symbol": "PF",
+      "address": "BXqVzWoiGZAXZjrisWAkwp7AwzFvfK1z9TnSq2um3D6i",
+      "reason": "流動性$13K<$35K",
+      "score": 0.5,
+      "liq": 13058,
+      "buy": 54
+    },
+    {
+      "symbol": "SNARKSTR",
+      "address": "ZVMihT6DKXWKRGX54VGvnYv4ndES8XtneUUYMCLpump",
+      "reason": "流動性$31K<$35K",
+      "score": 0.5,
+      "liq": 31987,
+      "buy": 69
+    },
+    {
+      "symbol": "PAPERPLATE",
+      "address": "VGHrWNN5yJG2NsCb8bhxGUaFugdCZ31EaiE1jkYpump",
+      "reason": "流動性$10K<$35K",
+      "score": 0,
+      "liq": 10114,
+      "buy": 50
+    },
+    {
+      "symbol": "TCN",
+      "address": "AHwDRXK4kCzW2D3M3xKJXPek9kBEoWMAiQaJSCMkpump",
+      "reason": "流動性$10K<$35K",
+      "score": 0,
+      "liq": 10526,
+      "buy": 60
+    }
+  ],
+  "stats": {
+    "wins": 0,
+    "losses": 2,
+    "win_amount": 0,
+    "loss_amount": -18.07,
+    "total_sells": 2,
+    "total_value": 77.15,
+    "total_invested": 75,
+    "total_pnl": -15.17
+  },
+  "unique_bought": 3,
+  "total_invested": 75,
+  "total_value": 77.15,
+  "capital": 1000,
+  "circuit": {
+    "consecutive_losses": 2,
+    "paused_until": 0,
+    "day_pnl": -9.076232399999995,
+    "day_date": "2026-09-28"
+  }
+}

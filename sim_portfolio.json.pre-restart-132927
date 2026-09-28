@@ -1,0 +1,217 @@
+{
+  "cash": 983.66321185,
+  "positions": [],
+  "trades": [
+    {
+      "time": "09-28 11:37",
+      "symbol": "BOB",
+      "action": "BUY",
+      "address": "E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "buy_price": 0.0004962813970307454,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "buy_impact": 1.316,
+      "jup_buy_price": 0.0004962813970307454,
+      "url": "https://gmgn.ai/sol/token/E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "reason": "score=6.0 衝擊1.316% [Jup原始$0.000496]"
+    },
+    {
+      "time": "09-28 11:49",
+      "symbol": "BOB",
+      "action": "SELL",
+      "address": "E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "buy_price": 0.0004962813970307454,
+      "sell_price": 0.0004392457115674503,
+      "pnl": -8.99,
+      "pnl_pct": -12.0,
+      "held_min": 12,
+      "buy_score": 6.0,
+      "sell_impact": 1.126,
+      "mfe": 23.1,
+      "mae": -12.0,
+      "url": "https://gmgn.ai/sol/token/E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump",
+      "reason": "停損-12.0%"
+    },
+    {
+      "time": "09-28 12:07",
+      "symbol": "INSTA",
+      "action": "BUY",
+      "address": "6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "buy_price": 0.0014957361000141867,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "buy_impact": 1.059,
+      "jup_buy_price": 0.0014957361000141867,
+      "url": "https://gmgn.ai/sol/token/6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "reason": "score=7.0 衝擊1.059% [Jup原始$0.001496]"
+    },
+    {
+      "time": "09-28 12:16",
+      "symbol": "INSTA",
+      "action": "SELL",
+      "address": "6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "buy_price": 0.0014957361000141867,
+      "sell_price": 0.0013222061344769457,
+      "pnl": -9.08,
+      "pnl_pct": -12.1,
+      "held_min": 9,
+      "buy_score": 7.0,
+      "buy_impact": 1.059,
+      "sell_impact": 0.471,
+      "mfe": 1.7,
+      "mae": -12.1,
+      "url": "https://gmgn.ai/sol/token/6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump",
+      "reason": "停損-12.1% (最高+1.7%)"
+    },
+    {
+      "time": "09-28 12:31",
+      "symbol": "PAID",
+      "action": "BUY",
+      "address": "98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "buy_price": 0.036971632010840735,
+      "sell_price": 0,
+      "pnl": 0,
+      "pnl_pct": 0,
+      "buy_impact": 0.116,
+      "jup_buy_price": 0.036971632010840735,
+      "url": "https://gmgn.ai/sol/token/98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "reason": "score=5.0 衝擊0.116% [Jup原始$0.036972]"
+    },
+    {
+      "time": "09-28 13:16",
+      "symbol": "PAID",
+      "action": "SELL",
+      "address": "98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "buy_price": 0.036971632010840735,
+      "sell_price": 0.03745665138998503,
+      "pnl": 0.61,
+      "pnl_pct": 0.8,
+      "held_min": 45,
+      "buy_score": 5.0,
+      "buy_impact": 0.116,
+      "sell_impact": 0.314,
+      "mfe": 2.8,
+      "mae": -0.9,
+      "url": "https://gmgn.ai/sol/token/98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+      "reason": "45分未延續0.8% (最高+2.8%)"
+    }
+  ],
+  "cooldown": {
+    "E4vwseNWpkBxzNxyv3msVLCzYHU5SXrj1QWXEycypump": 1790653780.4384356,
+    "6UhUkSBc9RBB9gVJcjCWtcQv4t771rQF7bdn2qK7pump": 1790655379.115059,
+    "98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump": 1790659016.7559664
+  },
+  "blacklist": [],
+  "rejected": [
+    {
+      "symbol": "NEARCAT",
+      "address": "CXM6rNB6wtsUBswpj1ypYwR93jdwrzcvunENMqd8pump",
+      "reason": "分數3.0<6.0",
+      "score": 3.0,
+      "liq": 38790,
+      "buy": 85
+    },
+    {
+      "symbol": "GRAYCAT",
+      "address": "GEXjq9Tb7perRs6fwBmuNZL5QAEsS2AWrGeZNBYBpump",
+      "reason": "分數3.0<6.0",
+      "score": 3.0,
+      "liq": 38200,
+      "buy": 80
+    },
+    {
+      "symbol": "FIM",
+      "address": "F3qyW7fB1K6yTpbQVCK4CqYrgHjnXYZ8ou3gQP6Kw8cN",
+      "reason": "分數1.5<6.0",
+      "score": 1.5,
+      "liq": 37992,
+      "buy": 55
+    },
+    {
+      "symbol": "GRAYMATTER",
+      "address": "A2Kz4oAJvg9yuQR9znDicg8QvFDgrxaHp68ih3HCpump",
+      "reason": "流動性$28K<$35K",
+      "score": 0.5,
+      "liq": 28017,
+      "buy": 54
+    },
+    {
+      "symbol": "CLAUDECHAN",
+      "address": "AjxqTiS6TnK75xG6pWAMJgNQuhkip3LzN36uy2wBbwmH",
+      "reason": "流動性$28K<$35K",
+      "score": -0.5,
+      "liq": 28125,
+      "buy": 59
+    },
+    {
+      "symbol": "KOKOS",
+      "address": "XrR9rqzFCBEcYoeyKrHV2uYFmEkwPCh6cxB3KuPCGd5",
+      "reason": "流動性$18K<$35K",
+      "score": -0.5,
+      "liq": 18143,
+      "buy": 52
+    },
+    {
+      "symbol": "SIDEKINU",
+      "address": "5b9xTUBEPTWBHhKNRp7WWP5FDEtDyDBEv9P2yij7pump",
+      "reason": "分數-1.5<6.0",
+      "score": -1.5,
+      "liq": 51988,
+      "buy": 75
+    },
+    {
+      "symbol": "hippo/acc",
+      "address": "CGfVJX4D35wE8kviKKE1XyKU9EHRXe4Zsw3R55ABpump",
+      "reason": "流動性$21K<$35K",
+      "score": -4.5,
+      "liq": 21191,
+      "buy": 52
+    },
+    {
+      "symbol": "BYTE",
+      "address": "CyovMnzMaKGApYsnm55d8rNWhEkskPSidKswnhgzMkGm",
+      "reason": "流動性$15K<$35K",
+      "score": -4.5,
+      "liq": 15353,
+      "buy": 58
+    },
+    {
+      "symbol": "BEZEL",
+      "address": "4RLhqc1jfpMLhtALMeUeVeJ5vySyL6eQca4cBjgCpump",
+      "reason": "流動性$13K<$35K",
+      "score": -6.5,
+      "liq": 13805,
+      "buy": 59
+    },
+    {
+      "symbol": "UNICORN",
+      "address": "unicWLZ8nf2sDSVYPeGCeGZmGzT9TrRzuxTW1NWj1QQ",
+      "reason": "流動性$11K<$35K",
+      "score": -7.5,
+      "liq": 11948,
+      "buy": 54
+    }
+  ],
+  "stats": {
+    "wins": 1,
+    "losses": 2,
+    "win_amount": 0.61,
+    "loss_amount": -18.07,
+    "total_sells": 3,
+    "total_value": 0,
+    "total_invested": 0,
+    "total_pnl": -16.34
+  },
+  "unique_bought": 3,
+  "total_invested": 0,
+  "total_value": 0,
+  "capital": 1000,
+  "circuit": {
+    "consecutive_losses": 0,
+    "paused_until": 0,
+    "day_pnl": -8.467330649999994,
+    "day_date": "2026-09-28"
+  }
+}
