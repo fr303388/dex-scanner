@@ -291,17 +291,8 @@ def check_onchain_risk(addr):
         elif info.get("freezeAuthority"):
             verdict = (False, "freeze權限未撤")
         else:
-            r2 = requests.post("https://api.mainnet-beta.solana.com", json={
-                "jsonrpc":"2.0","id":1,"method":"getTokenLargestAccounts",
-                "params":[addr]
-            }, timeout=8)
-            j2 = r2.json()
-            if "error" in j2:
-                return None, "持倉查詢不可用"
-            accounts = (j2["result"].get("value") or [])
-            total = float(info["supply"])
-            top1 = float(accounts[0]["amount"]) / total if accounts and total > 0 else 0
-            verdict = (False, f"最大持倉{top1*100:.0f}%") if top1 > 0.30 else (True, "")
+            # getTokenLargestAccounts 常被公共RPC限流，暫時跳過集中度檢查
+            verdict = (True, "")
         ONCHAIN_CACHE[addr] = verdict
         return verdict
     except Exception as e:
