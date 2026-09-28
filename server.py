@@ -87,6 +87,7 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
         print(f"[JUP] quote fail: {e}", flush=True)
         return None
 
+PENDING = {}  # addr -> first pass timestamp
 DECIMALS_CACHE = {}
 def get_token_decimals(mint):
     if mint in DECIMALS_CACHE: return DECIMALS_CACHE[mint]
@@ -204,52 +205,62 @@ def fetch_tokens():
     seen_addr = set()
     gm = fetch_gmgn()
 
-    # DexScreener token profiles
+    # DexScreener token profiles → 批次查詢
     try:
         r = requests.get("https://api.dexscreener.com/token-profiles/latest/v1", timeout=10)
+        addrs = []
         for prof in r.json():
             chain = prof.get("chainId", "")
             addr = prof.get("tokenAddress", "")
-            if not addr or chain != "solana" or addr in seen_addr: continue
-            try:
-                pr = requests.get(
-                    f"https://api.dexscreener.com/latest/dex/tokens/{addr}", timeout=8)
-                pairs = pr.json().get("pairs", [])
-                if not pairs: continue
-                # 取流動性最大的 pair
-                p = max(pairs, key=lambda x: safe_float(
-                    x.get("liquidity", {}).get("usd")))
+            if addr and chain == "solana" and addr not in seen_addr:
+                addrs.append(addr)
+        # 批次查詢（最多30個）
+        for i in range(0, min(len(addrs), 60), 30):
+            batch = addrs[i:i+30]
+            pr = requests.get(
+                f"https://api.dexscreener.com/latest/dex/tokens/{','.join(batch)}",
+                timeout=10)
+            pairs = pr.json().get("pairs", [])
+            if not pairs: continue
+            # 每個 addr 取流動性最大的 pair
+            best = {}
+            for p in pairs:
                 bt = p.get("baseToken", {})
-                if bt.get("address", "").lower() != addr.lower(): continue
+                a = bt.get("address", "")
                 liq = safe_float(p.get("liquidity", {}).get("usd"))
                 if liq < 10000: continue
-                buys = p.get("txns", {}).get("h24", {}).get("buys", 0)
-                sells = p.get("txns", {}).get("h24", {}).get("sells", 0)
-                vol = safe_float(p.get("volume", {}).get("h24"))
-                txns = buys + sells
-                br = round(buys / txns * 100) if txns else 50
-                g = gm.get(addr, {})
-                t = {
-                    "address": addr,
-                    "symbol": bt.get("symbol", "?"),
-                    "name": bt.get("name", ""),
-                    "price": safe_float(p.get("priceUsd")),
-                    "change_1h": safe_float(p.get("priceChange", {}).get("h1")),
-                    "change_24h": safe_float(p.get("priceChange", {}).get("h24")),
-                    "volume_24h": round(vol),
-                    "liquidity": round(liq),
-                    "buy_ratio": br,
-                    "txns_24h": txns,
-                    "image": (p.get("info", {}) or {}).get("imageUrl", ""),
-                    "url": p.get("url", f"https://dexscreener.com/solana/{addr}"),
-                    "gm_smart": g.get("smart_degen_count", 0),
-                    "gm_wash": g.get("is_wash_trading", False),
-                    "pair_created": p.get("pairCreatedAt", 0),
-                }
-                t["score"], t["reasons"] = score_token(t)
-                tokens.append(t)
-                seen_addr.add(addr)
-            except: pass
+                if a not in best or liq > best[a][0]:
+                    best[a] = (liq, p)
+            for addr, (liq, p) in best.items():
+                try:
+                    buys = p.get("txns", {}).get("h24", {}).get("buys", 0)
+                    sells = p.get("txns", {}).get("h24", {}).get("sells", 0)
+                    vol = safe_float(p.get("volume", {}).get("h24"))
+                    txns = buys + sells
+                    br = round(buys / txns * 100) if txns else 50
+                    g = gm.get(addr, {})
+                    bt = p.get("baseToken", {})
+                    t = {
+                        "address": addr,
+                        "symbol": bt.get("symbol", "?"),
+                        "name": bt.get("name", ""),
+                        "price": safe_float(p.get("priceUsd")),
+                        "change_1h": safe_float(p.get("priceChange", {}).get("h1")),
+                        "change_24h": safe_float(p.get("priceChange", {}).get("h24")),
+                        "volume_24h": round(vol),
+                        "liquidity": round(liq),
+                        "buy_ratio": br,
+                        "txns_24h": txns,
+                        "image": (p.get("info", {}) or {}).get("imageUrl", ""),
+                        "url": p.get("url", f"https://dexscreener.com/solana/{addr}"),
+                        "gm_smart": g.get("smart_degen_count", 0),
+                        "gm_wash": g.get("is_wash_trading", False),
+                        "pair_created": p.get("pairCreatedAt", 0),
+                    }
+                    t["score"], t["reasons"] = score_token(t)
+                    tokens.append(t)
+                    seen_addr.add(addr)
+                except: pass
     except Exception as e:
         print(f"[SCAN] dex fail: {e}", flush=True)
 
@@ -420,6 +431,14 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             rejected.append((t, f"分數{t['score']}<{min_score}")); continue
         if t["buy_ratio"] < min_br:
             rejected.append((t, f"買盤{t['buy_ratio']}%<{min_br}%")); continue
+
+        # 兩階段確認：連續2次掃描(30秒)都通過才進
+        now_cycle = now_ts
+        if addr not in PENDING:
+            PENDING[addr] = now_cycle
+            rejected.append((t, "首次通過，待確認")); continue
+        if now_cycle - PENDING[addr] < 15:  # 至少跨一次15秒掃描
+            rejected.append((t, "確認中")); continue
         t["_max_impact"] = max_impact
         candidates.append(t)
 
