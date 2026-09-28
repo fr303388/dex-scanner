@@ -514,7 +514,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "mfe": round(pos.get("mfe", 0), 1),
                 "mae": round(pos.get("mae", 0), 1),
                 "url": pos.get("url", ""),
-                "reason": reason,
+                "reason": f"{reason} (最高{pos.get('mfe',0):+.1f}%)",
             })
             # 下架/rug → 永久黑名單；其他出場 → 24小時冷卻
             if "下架" in reason or "rug" in reason.lower() or "流動性流失" in reason:
