@@ -479,9 +479,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             except:
                 _handle_miss(pos, now_ts)
 
-        # Jupiter 賣出報價算市值（decimals 已修正）
-        dec = get_token_decimals(addr)
-        sq = get_sell_value_usd(addr, pos["tokens"], dec)
+        # Jupiter 賣出報價算市值（用建倉時已確認的 decimals）
+        sq = get_sell_value_usd(addr, pos["tokens"], pos.get("decimals", 6))
         if sq and sq["usd"] > 0:
             pos["current_value"] = sq["usd"]
             pos["sell_impact"] = sq["impact_pct"]
