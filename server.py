@@ -457,6 +457,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         pos["pnl"] = pos["current_value"] - pos["invested"] - cost
         pos["pnl_pct"] = round(pos["pnl"] / pos["invested"] * 100, 1)
         pos["peak_pct"] = max(pos.get("peak_pct", pos["pnl_pct"]), pos["pnl_pct"])
+        # MFE/MAE tracking
+        pos["mfe"] = max(pos.get("mfe", 0), pos["pnl_pct"])
+        pos["mae"] = min(pos.get("mae", 0), pos["pnl_pct"])
         # 記錄價格走勢（最多30點）
         if "hist" not in pos: pos["hist"] = []
         pos["hist"].append(round(pos["current_price"], 8))
