@@ -68,6 +68,10 @@ SIM_MAX_POS = 3
 LIQ_TIER1 = 75000   # 大池：score>=5, buy>=52%, impact<=2%
 LIQ_TIER2 = 35000   # 小池：score>=6, buy>=55%, impact<=1.5%
 SIM_SL_PCT = -12.0
+# 賣出報價低於本金這個比例 → 判定為流動性崩潰（池子被抽走），
+# 而非價格波動。2026-09-28 的 BUBBLE(-98.2%) 與 Speed(-96.8%) 都是這類：
+# 部位先有浮盈(+6.8% / +61.4%)，然後在 20 秒內報價崩到本金 4% 以下。
+LIQ_COLLAPSE_PCT = 55.0
 SIM_MAX_HOLD = 2 * 3600
 SIM_DEAD_SECS = 2700          # 45 分未延續
 SIM_COOLDOWN = 24 * 3600      # 同 mint 當日不進
@@ -493,8 +497,13 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             pos["current_value"] = sq["usd"]
             pos["sell_impact"] = sq["impact_pct"]
             pos["current_price"] = sq["usd"] / pos["tokens"]
+            # 報價遠低於本金代表池子沒了，不是價格跌了。分開記錄，
+            # 否則 -96% 會被記成「停損-96%」，看不出這是流動性蒸發。
+            pos["quote_pct"] = sq["usd"] / pos["invested"] * 100
+            pos["liq_collapsed"] = pos["quote_pct"] < LIQ_COLLAPSE_PCT
         else:
             pos["current_value"] = pos["tokens"] * pos["current_price"]
+            pos["liq_collapsed"] = False
         pos["sell_quote_usd"] = round(pos["current_value"], 2)
 
         # Jupiter 賣出報價已含衝擊，只扣約 0.5% 網路/優先費
@@ -517,7 +526,11 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         held = now_ts - pos["buy_ts"]
         reason = None
 
-        if pos.get("delisted"):
+        if pos.get("liq_collapsed"):
+            # 報價只剩本金的一小截 → 池子被抽走，不是價格波動。
+            # 這類事件要獨立標記，否則統計會把它當成普通停損。
+            reason = f"流動性崩潰(報價僅{pos.get('quote_pct', 0):.0f}%)"
+        elif pos.get("delisted"):
             reason = "下架無報價"
         elif pos["pnl_pct"] <= SIM_SL_PCT:
             reason = f"停損{pos['pnl_pct']}%"
@@ -553,8 +566,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "url": pos.get("url", ""),
                 "reason": f"{reason} (最高{pos.get('mfe',0):+.1f}%)",
             })
-            # 下架/rug → 永久黑名單；其他出場 → 24小時冷卻
-            if "下架" in reason or "rug" in reason.lower() or "流動性流失" in reason:
+            # 下架/rug/流動性崩潰 → 永久黑名單；其他出場 → 24小時冷卻
+            if ("下架" in reason or "rug" in reason.lower()
+                    or "流動性流失" in reason or "流動性崩潰" in reason):
                 if pos["address"] not in sim["blacklist"]:
                     sim["blacklist"].append(pos["address"])
             else:
