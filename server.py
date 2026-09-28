@@ -9,10 +9,13 @@ def log_decisions(tokens, sim, rejected, now_ts):
             w.writerow(["ts","time","address","symbol","score","price","h1","h24",
                         "volume","liquidity","buy_ratio","txns","decision","reason"])
         held = {p["address"] for p in sim["positions"]}
+        entered = set()
+        for tr in sim.get("trades", []):
+            if tr.get("action") == "BUY": entered.add(tr["address"])
         rej_map = {rt["address"]: r for rt, r in rejected}
         for t in tokens:
             addr = t["address"]
-            decision = "HELD" if addr in held else "REJECTED"
+            decision = "HELD" if addr in held else ("ENTERED" if addr in entered else "REJECTED")
             if addr in sim.get("cooldown", {}): decision = "COOLDOWN"
             w.writerow([int(now_ts), time.strftime("%m-%d %H:%M"), addr,
                         t["symbol"], t["score"], t["price"],
@@ -683,6 +686,7 @@ def scan_cycle():
 
 def bg_loop():
     get_sol_price()
+    sol_counter = 0
     while True:
         try:
             with LOCK:
