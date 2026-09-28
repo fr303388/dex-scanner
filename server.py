@@ -18,7 +18,13 @@ SIM_SL_PCT = -12.0
 SIM_MAX_HOLD = 2 * 3600
 SIM_DEAD_SECS = 2700          # 45 分未延續
 SIM_COOLDOWN = 24 * 3600      # 同 mint 當日不進
-SOL_USD = 150.0
+SOL_USD = 150
+def get_sol_price():
+    global SOL_USD
+    try:
+        r = requests.get("https://api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112", timeout=5)
+        SOL_USD = float(r.json()["data"]["So11111111111111111111111111111111111111112"]["price"])
+    except: pass
 SCAN_INTERVAL = 15
 
 WSOL = "So11111111111111111111111111111111111111112"
@@ -349,8 +355,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             pos["current_value"] = pos["tokens"] * pos["current_price"]
         pos["sell_quote_usd"] = round(pos["current_value"], 2)
 
-        # 扣除雙向成本（買+賣衝擊約2% + 費用約0.5%）
-        cost = pos["invested"] * 0.025
+        # Jupiter 賣出報價已含衝擊，只扣約 0.5% 網路/優先費
+        cost = pos["invested"] * 0.005
         pos["pnl"] = pos["current_value"] - pos["invested"] - cost
         pos["pnl_pct"] = round(pos["pnl"] / pos["invested"] * 100, 1)
         pos["peak_pct"] = max(pos.get("peak_pct", pos["pnl_pct"]), pos["pnl_pct"])
@@ -398,8 +404,12 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "url": pos.get("url", ""),
                 "reason": reason,
             })
-            # 任何出場 → 同 mint 當日不再進場
-            sim["cooldown"][pos["address"]] = now_ts + SIM_COOLDOWN
+            # 下架/rug → 永久黑名單；其他出場 → 24小時冷卻
+            if "下架" in reason or "rug" in reason.lower():
+                if pos["address"] not in sim["blacklist"]:
+                    sim["blacklist"].append(pos["address"])
+            else:
+                sim["cooldown"][pos["address"]] = now_ts + SIM_COOLDOWN
             print(f"[SELL] {pos['symbol']} {reason}", flush=True)
         else:
             kept.append(pos)
@@ -542,6 +552,7 @@ def scan_cycle():
     STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
 
 def bg_loop():
+    get_sol_price()
     while True:
         try:
             with LOCK:
