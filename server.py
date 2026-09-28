@@ -157,7 +157,8 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
         return None
 
 PENDING = {}
-TRIGGER_TRACK = {}  # addr -> list of (ts, price, volume) snapshots
+TRIGGER_TRACK = {}
+ONCHAIN_CACHE = {}  # addr -> (ok, reason)  # addr -> list of (ts, price, volume) snapshots
 def update_trigger_history(tokens, now_ts):
     for t in tokens:
         addr = t["address"]
@@ -273,7 +274,10 @@ def safe_float(v, default=0):
     except: return default
 
 def check_onchain_risk(addr):
-    """檢查 mint authority、freeze authority、持倉集中度。回傳 (ok, reason)"""
+    """檢查 mint/freeze 權限 + 集中度。結果快取（不可變）"""
+    if addr in ONCHAIN_CACHE:
+        return ONCHAIN_CACHE[addr]
+    result = (None, "")
     try:
         # Mint info
         r = requests.post("https://api.mainnet-beta.solana.com", json={
@@ -296,9 +300,11 @@ def check_onchain_risk(addr):
             top1 = float(accounts[0]["amount"]) / total_supply
             if top1 > 0.30:
                 return False, f"最大持倉{top1*100:.0f}%"
-        return True, ""
+        result = (True, "")
     except Exception as e:
-        return False, f"鏈上檢查失敗:{type(e).__name__}"
+        result = (None, f"RPC:{type(e).__name__}")
+    ONCHAIN_CACHE[addr] = result
+    return result
 
 def score_token(t):
     s = 0; reasons = []
@@ -623,8 +629,10 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             rejected.append((t, "熔斷暫停")); continue
 
         # 鏈上風險檢查
-        ok, risk_reason = check_onchain_risk(addr)
-        if not ok:
+        verdict, risk_reason = check_onchain_risk(addr)
+        if verdict is None:
+            rejected.append((t, "鏈上資料不可用")); continue
+        if not verdict:
             rejected.append((t, risk_reason)); continue
         # 排名與觸發分離
         triggered, trig_reason = check_trigger(addr, t, now_ts)
