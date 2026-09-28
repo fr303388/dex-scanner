@@ -547,10 +547,21 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if addr in held_addr: continue
         if addr in sim["cooldown"]:
             rejected.append((t, "冷卻中")); continue
-        if addr not in first_seen:
-            first_seen[addr] = now_ts
-        if now_ts - first_seen[addr] < 900:
-            rejected.append((t, "觀察期")); continue
+        # 幣齡檢查
+        pc = t.get("pair_created", 0)
+        if pc > 1e11: age_sec = now_ts - pc / 1000
+        elif pc > 0: age_sec = now_ts - pc
+        else: age_sec = None
+        if age_sec is None:
+            if addr not in first_seen: first_seen[addr] = now_ts
+            age_sec = now_ts - first_seen[addr]
+            if age_sec < 180:
+                rejected.append((t, f"幣齡未知{int(age_sec)}s")); continue
+        else:
+            if age_sec < 180:
+                rejected.append((t, f"幣齡{int(age_sec)}s")); continue
+            if age_sec > 86400:
+                rejected.append((t, f"幣齡過舊{int(age_sec/3600)}h")); continue
 
         liq = t["liquidity"]
         if liq >= LIQ_TIER1:
