@@ -3,20 +3,24 @@ import requests, time, json, os, subprocess, shutil, threading, csv
 BASE = os.path.dirname(os.path.abspath(__file__))
 DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
 TRAJECTORY_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trajectory.csv")
+TRAJ_HEADER = ["ts","time","address","symbol","price","pnl_pct","mfe","mae",
+               "peak_pct","current_value","sell_impact","held_min",
+               "atr_pct","vol_stop_pct","quote_pct","liq_collapsed"]
 def log_trajectory(pos, now_ts):
     """每個循環記錄持倉狀態"""
     file_exists = os.path.exists(TRAJECTORY_LOG)
     with open(TRAJECTORY_LOG, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         if not file_exists:
-            w.writerow(["ts","time","address","symbol","price","pnl_pct","mfe","mae",
-                        "peak_pct","current_value","sell_impact","held_min"])
+            w.writerow(TRAJ_HEADER)
         held = (now_ts - pos.get("buy_ts", now_ts)) / 60
         w.writerow([int(now_ts), time.strftime("%m-%d %H:%M:%S"),
                     pos["address"], pos["symbol"], pos.get("current_price",0),
                     pos.get("pnl_pct",0), pos.get("mfe",0), pos.get("mae",0),
                     pos.get("peak_pct",0), pos.get("current_value",0),
-                    pos.get("sell_impact",0), round(held,1)])
+                    pos.get("sell_impact",0), round(held,1),
+                    pos.get("atr_pct"), pos.get("vol_stop_pct"),
+                    pos.get("quote_pct"), pos.get("liq_collapsed", False)])
 def log_decisions(tokens, sim, rejected, now_ts, entered):
     """entered = 本輪「實際成交」的 address 集合。
 
@@ -72,6 +76,22 @@ SIM_SL_PCT = -12.0
 # 而非價格波動。2026-09-28 的 BUBBLE(-98.2%) 與 Speed(-96.8%) 都是這類：
 # 部位先有浮盈(+6.8% / +61.4%)，然後在 20 秒內報價崩到本金 4% 以下。
 LIQ_COLLAPSE_PCT = 55.0
+
+# ---- 波動率停損 -------------------------------------------------------
+# 2026-09-28 的 Speed(-96.8%) 顯示固定 -12% 在單根 15 秒內的崩跌中
+# 完全沒有作用（20 秒內 +61.4% -> -96.8%，中間沒有任何價格）。
+# 波動率停損把停損距離綁到標的自己的波動，而不是全市場共用一個數字。
+#
+# 預設關閉（USE_VOL_STOP=False）：k 要用多少是策略決定，而那需要
+# 216 筆以上的樣本才能定。開關關閉期間 atr_pct / vol_stop_pct 照樣
+# 計算並寫進 trajectory.csv，一週後可以直接用真實軌跡比較兩種停損。
+USE_VOL_STOP = False
+VOL_K = 2.0               # 停損距離 = k × 15秒報酬標準差
+VOL_STOP_MIN = -6.0       # 不會比這個更緊（低波動時避免一進場就掃出）
+VOL_STOP_MAX = -12.0      # 不會比固定停損更寬
+VOL_MIN_SAMPLES = 20      # 至少 20 個樣本（約 5 分鐘）才啟用
+HIST_MAX = 80             # 價格歷史長度：80 × 15s = 20 分鐘
+
 SIM_MAX_HOLD = 2 * 3600
 SIM_DEAD_SECS = 2700          # 45 分未延續
 SIM_COOLDOWN = 24 * 3600      # 同 mint 當日不進
@@ -514,11 +534,24 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         # MFE/MAE tracking
         pos["mfe"] = max(pos.get("mfe", pos["pnl_pct"]), pos["pnl_pct"])
         pos["mae"] = min(pos.get("mae", 0), pos["pnl_pct"])
-        log_trajectory(pos, now_ts)
-        # 記錄價格走勢（最多30點）
+        # 記錄價格走勢（最多 HIST_MAX 點，供 ATR 計算）
         if "hist" not in pos: pos["hist"] = []
-        pos["hist"].append(round(pos["current_price"], 8))
-        if len(pos["hist"]) > 30: pos["hist"] = pos["hist"][-30:]
+        pos["hist"].append(round(pos["current_price"], 10))
+        if len(pos["hist"]) > HIST_MAX: pos["hist"] = pos["hist"][-HIST_MAX:]
+        # 波動率停損：-k × ATR（15 秒報酬的樣本標準差 × 100）
+        # 無論 USE_VOL_STOP 開關如何都計算並記錄，方便事後比較。
+        h = pos["hist"]
+        pos["atr_pct"] = None
+        if len(h) >= VOL_MIN_SAMPLES:
+            rets = [(h[i] - h[i-1]) / h[i-1] * 100 for i in range(1, len(h)) if h[i-1]]
+            if rets:
+                m = sum(rets) / len(rets)
+                var = sum((x - m) ** 2 for x in rets) / len(rets)
+                sd = var ** 0.5
+                # 夾住上下限：低波動時不會被過早掃出，高波動時不比固定停損更寬
+                pos["atr_pct"] = round(sd, 3)
+                pos["vol_stop_pct"] = round(max(VOL_STOP_MAX, min(VOL_STOP_MIN, -VOL_K * sd)), 1)
+        log_trajectory(pos, now_ts)
 
     # 出場判斷
     kept = []
@@ -532,6 +565,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             reason = f"流動性崩潰(報價僅{pos.get('quote_pct', 0):.0f}%)"
         elif pos.get("delisted"):
             reason = "下架無報價"
+        elif (USE_VOL_STOP and pos.get("vol_stop_pct") is not None
+              and pos["pnl_pct"] <= pos["vol_stop_pct"]):
+            reason = f"波動停損{pos['pnl_pct']}%(ATR{pos.get('atr_pct')})"
         elif pos["pnl_pct"] <= SIM_SL_PCT:
             reason = f"停損{pos['pnl_pct']}%"
         elif pos.get("peak_pct", 0) >= 50 and pos["pnl_pct"] < 20:
@@ -686,11 +722,17 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         tokens_bought = buy_usd / eff_price
         sim["cash"] -= buy_usd
         entered_this_cycle.add(addr)
+        # 進場時相對於近 30 分鐘高點的位置。
+        # 2026-09-28 的 Speed(-96.8%) 與 BUBBLE(-98.2%) 進場時分別位於
+        # 30 分鐘高點的 +1.1% 與 -18.7%，是目前唯一與災難相關的特徵。
+        _tr = [h[1] for h in TRIGGER_TRACK.get(addr, []) if h[1]]
+        rel_30m_high = round((eff_price / max(_tr) - 1) * 100, 1) if _tr else None
         kept.append({
             "address": addr,
             "symbol": t["symbol"],
             "buy_price": eff_price,
             "current_price": eff_price,
+            "rel_30m_high": rel_30m_high,
             "buy_ts": now_ts,
             "buy_time": now_str,
             "invested": round(buy_usd, 2),
@@ -711,10 +753,11 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "action": "BUY", "address": addr,
             "buy_price": eff_price, "sell_price": 0,
             "pnl": 0, "pnl_pct": 0,
+            "rel_30m_high": rel_30m_high,
             "buy_impact": bq["impact_pct"],
             "jup_buy_price": bq["price_usd"],
             "url": t.get("url", ""),
-            "reason": f"score={t['score']} 衝擊{bq['impact_pct']}% [Jup原始${bq['price_usd']:.6f}]",
+            "reason": f"score={t['score']} 衝擊{bq['impact_pct']}% rel30={rel_30m_high} [Jup原始${bq['price_usd']:.6f}]",
         })
         print(f"[BUY] {t['symbol']} score={t['score']} impact={bq['impact_pct']}%", flush=True)
 
