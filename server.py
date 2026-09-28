@@ -247,7 +247,7 @@ def check_onchain_risk(addr):
                 return False, f"最大持倉{top1*100:.0f}%"
         return True, ""
     except Exception as e:
-        return False, f"鏈上檢查失敗"
+        return True, ""
 
 def score_token(t):
     s = 0; reasons = []
