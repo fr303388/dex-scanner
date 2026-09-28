@@ -212,7 +212,7 @@ def get_token_decimals(mint):
         return dec
     except Exception as e:
         print(f"[DEC] fail {mint[:8]}: {e}", flush=True)
-        return 6
+        return None
 
 def get_buy_quote(token_mint, usd_amount=SIM_BUY_USD):
     """取得買入報價，回傳 (有效價格USD, priceImpact%, inLamports, outAmount)"""
@@ -496,7 +496,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         pos["pnl_pct"] = round(pos["pnl"] / pos["invested"] * 100, 1)
         pos["peak_pct"] = max(pos.get("peak_pct", pos["pnl_pct"]), pos["pnl_pct"])
         # MFE/MAE tracking
-        pos["mfe"] = max(pos.get("mfe", 0), pos["pnl_pct"])
+        pos["mfe"] = max(pos.get("mfe", pos["pnl_pct"]), pos["pnl_pct"])
         pos["mae"] = min(pos.get("mae", 0), pos["pnl_pct"])
         log_trajectory(pos, now_ts)
         # 記錄價格走勢（最多30點）
@@ -680,7 +680,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "url": t.get("url", ""),
             "image": t.get("image", ""),
             "miss_count": 0,
-            "peak_pct": 0,
+            "peak_pct": 0,  # set on first update
         })
         sim["trades"].append({
             "time": now_str, "symbol": t["symbol"],
