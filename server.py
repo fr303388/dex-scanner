@@ -1,7 +1,7 @@
 """迷因幣雷達 V3.1 — 背景自主掃描、mint address 管理、Jupiter 可成交報價"""
 import requests, time, json, os, subprocess, shutil, threading, csv
 DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
-def log_decisions(tokens, sim, rejected, now_ts):
+def log_decisions(tokens, sim, rejected, now_ts, kept):
     file_exists = os.path.exists(DECISION_LOG)
     with open(DECISION_LOG, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -95,6 +95,7 @@ def load_sim():
     return {"cash": SIM_CAPITAL, "positions": [], "trades": [], "cooldown": {}, "blacklist": []}
 
 def save_sim(sim):
+    save_circuit(sim)
     tmp = SIM_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(sim, f, ensure_ascii=False, indent=2)
@@ -594,7 +595,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
 
     for t in candidates:
         if len(kept) >= SIM_MAX_POS: break
-        if sim["cash"] < SIM_BUY_USD: break
+        buy_usd = min(SIM_BUY_USD, t["liquidity"] * 0.0015)
+        if sim["cash"] < buy_usd: break
         addr = t["address"]
 
         # 部位大小：min($75, 流動性×0.5%)
@@ -671,7 +673,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
     sim["total_invested"] = round(sum(p["invested"] for p in kept), 2)
     sim["total_value"] = round(total_value, 2)
     sim["capital"] = SIM_CAPITAL
-    log_decisions(tokens, sim, rejected, now_ts)
+    log_decisions(tokens, sim, rejected, now_ts, kept)
 
 def _handle_miss(pos, now_ts):
     held = now_ts - pos.get("buy_ts", now_ts)
