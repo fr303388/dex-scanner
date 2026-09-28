@@ -1,5 +1,6 @@
 """迷因幣雷達 V3.1 — 背景自主掃描、mint address 管理、Jupiter 可成交報價"""
 import requests, time, json, os, subprocess, shutil, threading, csv
+BASE = os.path.dirname(os.path.abspath(__file__))
 DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
 TRAJECTORY_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trajectory.csv")
 def log_trajectory(pos, now_ts):
@@ -85,8 +86,8 @@ if not JUP_API_KEY:
             if line.startswith("JUP_API_KEY="):
                 JUP_API_KEY = line.strip().split("=",1)[1]
     except: pass
-SIM_FILE = "sim_portfolio.json"
-FIRST_SEEN_FILE = "first_seen.json"
+SIM_FILE = os.path.join(BASE, "sim_portfolio.json")
+FIRST_SEEN_FILE = os.path.join(BASE, "first_seen.json")
 
 GMGN_KEY = os.environ.get("GMGN_API_KEY", "")
 if not GMGN_KEY:
