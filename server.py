@@ -277,34 +277,35 @@ def check_onchain_risk(addr):
     """檢查 mint/freeze 權限 + 集中度。結果快取（不可變）"""
     if addr in ONCHAIN_CACHE:
         return ONCHAIN_CACHE[addr]
-    result = (None, "")
     try:
-        # Mint info
         r = requests.post("https://api.mainnet-beta.solana.com", json={
             "jsonrpc":"2.0","id":1,"method":"getAccountInfo",
             "params":[addr,{"encoding":"jsonParsed"}]
         }, timeout=8)
-        info = r.json()["result"]["value"]["data"]["parsed"]["info"]
+        j = r.json()
+        if "error" in j:
+            return None, "RPC不可用"
+        info = j["result"]["value"]["data"]["parsed"]["info"]
         if info.get("mintAuthority"):
-            return False, "mint權限未撤"
-        if info.get("freezeAuthority"):
-            return False, "freeze權限未撤"
-        # Top holders concentration
-        r2 = requests.post("https://api.mainnet-beta.solana.com", json={
-            "jsonrpc":"2.0","id":1,"method":"getTokenLargestAccounts",
-            "params":[addr]
-        }, timeout=8)
-        accounts = r2.json()["result"]["value"]
-        total_supply = float(info["supply"])
-        if total_supply > 0 and accounts:
-            top1 = float(accounts[0]["amount"]) / total_supply
-            if top1 > 0.30:
-                return False, f"最大持倉{top1*100:.0f}%"
-        result = (True, "")
+            verdict = (False, "mint權限未撤")
+        elif info.get("freezeAuthority"):
+            verdict = (False, "freeze權限未撤")
+        else:
+            r2 = requests.post("https://api.mainnet-beta.solana.com", json={
+                "jsonrpc":"2.0","id":1,"method":"getTokenLargestAccounts",
+                "params":[addr]
+            }, timeout=8)
+            j2 = r2.json()
+            if "error" in j2:
+                return None, "持倉查詢不可用"
+            accounts = (j2["result"].get("value") or [])
+            total = float(info["supply"])
+            top1 = float(accounts[0]["amount"]) / total if accounts and total > 0 else 0
+            verdict = (False, f"最大持倉{top1*100:.0f}%") if top1 > 0.30 else (True, "")
+        ONCHAIN_CACHE[addr] = verdict
+        return verdict
     except Exception as e:
-        result = (None, f"RPC:{type(e).__name__}")
-    ONCHAIN_CACHE[addr] = result
-    return result
+        return None, f"RPC:{type(e).__name__}"
 
 def score_token(t):
     s = 0; reasons = []
