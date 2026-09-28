@@ -100,7 +100,8 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
         print(f"[JUP] quote fail: {e}", flush=True)
         return None
 
-PENDING = {}  # addr -> first pass timestamp
+PENDING = {}
+CIRCUIT = {"consecutive_losses": 0, "paused_until": 0, "day_pnl": 0, "day_date": ""}  # addr -> first pass timestamp
 DECIMALS_CACHE = {}
 def get_token_decimals(mint):
     if mint in DECIMALS_CACHE: return DECIMALS_CACHE[mint]
@@ -170,6 +171,34 @@ def fetch_gmgn():
 def safe_float(v, default=0):
     try: return float(v)
     except: return default
+
+def check_onchain_risk(addr):
+    """檢查 mint authority、freeze authority、持倉集中度。回傳 (ok, reason)"""
+    try:
+        # Mint info
+        r = requests.post("https://api.mainnet-beta.solana.com", json={
+            "jsonrpc":"2.0","id":1,"method":"getAccountInfo",
+            "params":[addr,{"encoding":"jsonParsed"}]
+        }, timeout=8)
+        info = r.json()["result"]["value"]["data"]["parsed"]["info"]
+        if info.get("mintAuthority"):
+            return False, "mint權限未撤"
+        if info.get("freezeAuthority"):
+            return False, "freeze權限未撤"
+        # Top holders concentration
+        r2 = requests.post("https://api.mainnet-beta.solana.com", json={
+            "jsonrpc":"2.0","id":1,"method":"getTokenLargestAccounts",
+            "params":[addr]
+        }, timeout=8)
+        accounts = r2.json()["result"]["value"]
+        total_supply = float(info["supply"])
+        if total_supply > 0 and accounts:
+            top1 = float(accounts[0]["amount"]) / total_supply
+            if top1 > 0.30:
+                return False, f"最大持倉{top1*100:.0f}%"
+        return True, ""
+    except Exception as e:
+        return False, f"鏈上檢查失敗"
 
 def score_token(t):
     s = 0; reasons = []
@@ -417,6 +446,18 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                     sim["blacklist"].append(pos["address"])
             else:
                 sim["cooldown"][pos["address"]] = now_ts + SIM_COOLDOWN
+            # 更新熔斷
+            if pos["pnl"] < 0:
+                CIRCUIT["consecutive_losses"] += 1
+                CIRCUIT["day_pnl"] += pos["pnl"]
+                if CIRCUIT["consecutive_losses"] >= 5:
+                    CIRCUIT["paused_until"] = now_ts + 3600
+                    CIRCUIT["consecutive_losses"] = 0
+            else:
+                CIRCUIT["consecutive_losses"] = 0
+                CIRCUIT["day_pnl"] += pos["pnl"]
+            if CIRCUIT["day_pnl"] < -150:
+                CIRCUIT["paused_until"] = now_ts + 86400
             print(f"[SELL] {pos['symbol']} {reason}", flush=True)
         else:
             kept.append(pos)
@@ -454,8 +495,20 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         if addr not in PENDING:
             PENDING[addr] = now_cycle
             rejected.append((t, "首次通過，待確認")); continue
-        if now_cycle - PENDING[addr] < 15:  # 至少跨一次15秒掃描
+        if now_cycle - PENDING[addr] < 15:
             rejected.append((t, "確認中")); continue
+
+        # 鏈上風險檢查
+        ok, risk_reason = check_onchain_risk(addr)
+        if not ok:
+            rejected.append((t, risk_reason)); continue
+
+        # 熔斷檢查
+        today = time.strftime("%Y-%m-%d")
+        if CIRCUIT["day_date"] != today:
+            CIRCUIT["day_date"] = today; CIRCUIT["day_pnl"] = 0
+        if now_ts < CIRCUIT["paused_until"]:
+            rejected.append((t, "熔斷暫停")); continue
         t["_max_impact"] = max_impact
         candidates.append(t)
 
@@ -480,8 +533,8 @@ def run_sim(tokens, now_ts, now_str, first_seen):
 
         # 用 Jupiter 實際成交價（decimals 已由 Solana RPC 修正）
         eff_price = bq["price_usd"] if bq["price_usd"] > 0 else t["price"]
-        tokens_bought = SIM_BUY_USD / eff_price
-        sim["cash"] -= SIM_BUY_USD
+        tokens_bought = buy_usd / eff_price
+        sim["cash"] -= buy_usd
         kept.append({
             "address": addr,
             "symbol": t["symbol"],
@@ -489,7 +542,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "current_price": eff_price,
             "buy_ts": now_ts,
             "buy_time": now_str,
-            "invested": SIM_BUY_USD,
+            "invested": round(buy_usd, 2),
             "tokens": tokens_bought,
             "decimals": bq["decimals"],
             "buy_score": t["score"],
