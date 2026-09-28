@@ -338,7 +338,9 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             pos["current_value"] = pos["tokens"] * pos["current_price"]
         pos["sell_quote_usd"] = round(pos["current_value"], 2)
 
-        pos["pnl"] = pos["current_value"] - pos["invested"]
+        # 扣除雙向成本（買+賣衝擊約2% + 費用約0.5%）
+        cost = pos["invested"] * 0.025
+        pos["pnl"] = pos["current_value"] - pos["invested"] - cost
         pos["pnl_pct"] = round(pos["pnl"] / pos["invested"] * 100, 1)
         pos["peak_pct"] = max(pos.get("peak_pct", pos["pnl_pct"]), pos["pnl_pct"])
         # 記錄價格走勢（最多30點）
