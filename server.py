@@ -158,7 +158,8 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
 
 PENDING = {}
 TRIGGER_TRACK = {}
-ONCHAIN_CACHE = {}  # addr -> (ok, reason)  # addr -> list of (ts, price, volume) snapshots
+ONCHAIN_CACHE = {}
+ONCHAIN_FAIL = {}  # addr -> retry_after_ts  # addr -> list of (ts, price, volume) snapshots
 def update_trigger_history(tokens, now_ts):
     for t in tokens:
         addr = t["address"]
@@ -277,6 +278,8 @@ def check_onchain_risk(addr):
     """檢查 mint/freeze 權限 + 集中度。結果快取（不可變）"""
     if addr in ONCHAIN_CACHE:
         return ONCHAIN_CACHE[addr]
+    if ONCHAIN_FAIL.get(addr, 0) > time.time():
+        return None, "RPC退避中"
     try:
         r = requests.post("https://api.mainnet-beta.solana.com", json={
             "jsonrpc":"2.0","id":1,"method":"getAccountInfo",
@@ -296,6 +299,7 @@ def check_onchain_risk(addr):
         ONCHAIN_CACHE[addr] = verdict
         return verdict
     except Exception as e:
+        ONCHAIN_FAIL[addr] = time.time() + 300
         return None, f"RPC:{type(e).__name__}"
 
 def score_token(t):
