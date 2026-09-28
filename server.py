@@ -34,6 +34,7 @@ def log_decisions(tokens, sim, rejected, now_ts, entered):
         rej_map = {rt["address"]: r for rt, r in rejected}
         for t in tokens:
             addr = t["address"]
+            if t.get("liquidity", 0) < 35000: continue
             if addr in entered:
                 decision = "ENTERED"          # 本輪成交（同時也會在 held 裡）
             elif addr in held:
