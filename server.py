@@ -296,7 +296,7 @@ def check_onchain_risk(addr):
             top1 = float(accounts[0]["amount"]) / total_supply
             if top1 > 0.30:
                 return False, f"最大持倉{top1*100:.0f}%"
-        return False, "持倉集中度資料缺失"
+        return True, ""
     except Exception as e:
         return False, f"鏈上檢查失敗:{type(e).__name__}"
 
