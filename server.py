@@ -121,6 +121,35 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
         return None
 
 PENDING = {}
+TRIGGER_TRACK = {}  # addr -> list of (ts, price, volume) snapshots
+def check_trigger(addr, t, now_ts):
+    """排名與觸發分離：score 通過後，等突破或回踩再起才進場"""
+    hist = TRIGGER_TRACK.setdefault(addr, [])
+    hist.append((now_ts, t["price"], t.get("volume_24h", 0)))
+    # 只留最近 30 分鐘（120 個 15 秒點）
+    cutoff = now_ts - 1800
+    while hist and hist[0][0] < cutoff: hist.pop(0)
+    if len(hist) < 8:  # 至少收集 2 分鐘
+        return False, "收集走勢中"
+    prices = [h[1] for h in hist]
+    recent = prices[-8:]   # 最近 2 分鐘
+    prior = prices[:-8]    # 之前
+    if not prior: return False, "資料不足"
+    hi_prior = max(prior)
+    lo_prior = min(prior)
+    cur = prices[-1]
+    # 模式1：突破 — 現價突破前高，且不在追高區
+    if cur > hi_prior * 1.01 and t.get("change_1h", 0) < 50:
+        return True, "突破"
+    # 模式2：回踩再起 — 從高點回撤10-25%後重新站回近期均價
+    peak = max(prices)
+    if peak > 0:
+        pullback = (peak - cur) / peak
+        avg_recent = sum(recent) / len(recent)
+        if 0.10 <= pullback <= 0.25 and cur >= avg_recent:
+            return True, "回踩再起"
+    return False, "等待觸發"
+
 CIRCUIT = {"consecutive_losses": 0, "paused_until": 0, "day_pnl": 0, "day_date": ""}  # addr -> first pass timestamp
 DECIMALS_CACHE = {}
 def get_token_decimals(mint):
@@ -529,6 +558,10 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             CIRCUIT["day_date"] = today; CIRCUIT["day_pnl"] = 0
         if now_ts < CIRCUIT["paused_until"]:
             rejected.append((t, "熔斷暫停")); continue
+        # 排名與觸發分離
+        triggered, trig_reason = check_trigger(addr, t, now_ts)
+        if not triggered:
+            rejected.append((t, trig_reason)); continue
         t["_max_impact"] = max_impact
         candidates.append(t)
 
