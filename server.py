@@ -611,6 +611,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
     sim["total_invested"] = round(sum(p["invested"] for p in kept), 2)
     sim["total_value"] = round(total_value, 2)
     sim["capital"] = SIM_CAPITAL
+    log_decisions(tokens, sim, rejected, now_ts)
 
 def _handle_miss(pos, now_ts):
     held = now_ts - pos.get("buy_ts", now_ts)
