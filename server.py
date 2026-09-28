@@ -82,7 +82,7 @@ import os
 JUP_API_KEY = os.environ.get("JUP_API_KEY", "")
 if not JUP_API_KEY:
     try:
-        for line in open(".env", encoding="utf-8"):
+        for line in open(os.path.join(BASE, ".env"), encoding="utf-8"):
             if line.startswith("JUP_API_KEY="):
                 JUP_API_KEY = line.strip().split("=",1)[1]
     except: pass
@@ -92,7 +92,7 @@ FIRST_SEEN_FILE = os.path.join(BASE, "first_seen.json")
 GMGN_KEY = os.environ.get("GMGN_API_KEY", "")
 if not GMGN_KEY:
     try:
-        for line in open(".env", encoding="utf-8"):
+        for line in open(os.path.join(BASE, ".env"), encoding="utf-8"):
             if line.startswith("GMGN_API_KEY="): GMGN_KEY = line.strip().split("=",1)[1]
     except: pass
 GMGN_NODE = r"C:\Users\ANGEL\AppData\Local\Doubao\User Data\sandbox_runtime\bases\c98c5042338ed152c6f10ecd8591889f\node\node.exe"
