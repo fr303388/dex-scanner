@@ -676,6 +676,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             "buy_ts": now_ts,
             "buy_time": now_str,
             "invested": round(buy_usd, 2),
+            "current_value": buy_usd,
             "tokens": tokens_bought,
             "decimals": bq["decimals"],
             "buy_score": t["score"],
@@ -748,7 +749,12 @@ def scan_cycle():
         STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
     except Exception as e:
         import traceback
-        print(f"[BG] error: {e}\n{traceback.format_exc()}", flush=True)
+        tb = traceback.format_exc()
+        print(f"[BG] error: {e}\n{tb}", flush=True)
+        try:
+            with open(os.path.join(BASE, "bg_error.log"), "a", encoding="utf-8") as f:
+                f.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} =====\n{tb}\n")
+        except Exception: pass
 
 def bg_loop():
     get_sol_price()
