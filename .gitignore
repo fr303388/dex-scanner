@@ -9,6 +9,13 @@
 *.json.tmp
 *.json.corrupt-*
 
+# ---- backups and one-off patch scripts ----
+# server_v2.py.bak, decisions.csv.bak-*, and the ~150 fix_*.py patches that
+# were used to hand-edit server.py. The real history is in git; these are noise.
+*.bak
+*.bak-*
+fix_*.py
+
 # ---- secrets ----
 .env
 privkey*
