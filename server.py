@@ -167,10 +167,8 @@ def update_trigger_history(tokens, now_ts):
         while hist and hist[0][0] < cutoff: hist.pop(0)
 
 def check_trigger(addr, t, now_ts):
-    """排名與觸發分離：score 通過後，等突破或回踩再起才進場"""
-    hist = TRIGGER_TRACK.setdefault(addr, [])
-    hist.append((now_ts, t["price"], t.get("volume_24h", 0)))
-    # 只留最近 30 分鐘（120 個 15 秒點）
+    """讀取已收集的歷史，不重複 append"""
+    hist = TRIGGER_TRACK.get(addr, [])
     cutoff = now_ts - 1800
     while hist and hist[0][0] < cutoff: hist.pop(0)
     if len(hist) < 8:  # 至少收集 2 分鐘
