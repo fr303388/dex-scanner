@@ -223,12 +223,32 @@ def check_trigger(addr, t, now_ts):
             return True, "回踩再起"
     return False, "等待觸發"
 
-CIRCUIT = {"consecutive_losses": 0, "paused_until": 0, "day_pnl": 0, "day_date": ""}
+CIRCUIT = {"consecutive_losses": 0, "paused_until": 0, "day_pnl": 0,
+           "day_date": "", "paused_since": 0}
+# 跨日時把殘留的暫停縮到這麼長，而不是留滿 24 小時
+CIRCUIT_RESET_GRACE = 3600
+# 當日虧損超過這個門檻就暫停進場
+CIRCUIT_DAY_PNL_LIMIT = -150.0
+# 暫停長度。原本寫死 86400，讓 24/7 市場裡等於停掉一整天。
+CIRCUIT_DAY_PAUSE = 24 * 3600
 def save_circuit(sim):
     sim["circuit"] = CIRCUIT
 def load_circuit(sim):
     global CIRCUIT
-    if "circuit" in sim: CIRCUIT = sim["circuit"]  # addr -> first pass timestamp
+    if "circuit" in sim:
+        CIRCUIT = sim["circuit"]
+        CIRCUIT.setdefault("paused_since", 0)
+    # 重啟時清除「前一設定的」暫停。沒有這段的話，一次跨日的 24 小時
+    # 暫停會在重啟後原樣延續，機器人整個白天都不進場。
+    # 2026-09-28 23:57 觸發 → 09-29 全天零進場，就是這個原因。
+    now = time.time()
+    if CIRCUIT.get("paused_until", 0) > now:
+        since = CIRCUIT.get("paused_since", 0) or 0
+        if not since or time.strftime("%Y-%m-%d", time.localtime(since)) != time.strftime("%Y-%m-%d"):
+            CIRCUIT["paused_until"] = now + CIRCUIT_RESET_GRACE
+            print(f"[CIRCUIT] stale cross-day pause cleared on restart "
+                  f"(was set {datetime.fromtimestamp(since).strftime('%m-%d %H:%M') if since else '?'}), "
+                  f"now pause {CIRCUIT_RESET_GRACE}s", flush=True)
 DECIMALS_CACHE = {}
 def get_token_decimals(mint):
     if mint in DECIMALS_CACHE: return DECIMALS_CACHE[mint]
@@ -615,12 +635,19 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 CIRCUIT["day_pnl"] += pos["pnl"]
                 if CIRCUIT["consecutive_losses"] >= 5:
                     CIRCUIT["paused_until"] = now_ts + 3600
+                    CIRCUIT["paused_since"] = now_ts
                     CIRCUIT["consecutive_losses"] = 0
             else:
                 CIRCUIT["consecutive_losses"] = 0
                 CIRCUIT["day_pnl"] += pos["pnl"]
-            if CIRCUIT["day_pnl"] < -150:
-                CIRCUIT["paused_until"] = now_ts + 86400
+            if CIRCUIT["day_pnl"] < CIRCUIT_DAY_PNL_LIMIT:
+                CIRCUIT["paused_until"] = now_ts + CIRCUIT_DAY_PAUSE
+                CIRCUIT["paused_since"] = now_ts
+                # 必須出現在 log 裡：暫停是看不見的狀態，
+                # 不記錄的話只能靠比對時間戳才會發現機器人停擺了。
+                print(f"[CIRCUIT] day_pnl {CIRCUIT['day_pnl']:.2f} < "
+                      f"{CIRCUIT_DAY_PNL_LIMIT} -> pause {CIRCUIT_DAY_PAUSE/3600:.0f}h "
+                      f"until {datetime.now(UTC8).strftime('%m-%d %H:%M')}", flush=True)
             print(f"[SELL] {pos['symbol']} {reason}", flush=True)
         else:
             kept.append(pos)
@@ -676,6 +703,12 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         today = time.strftime("%Y-%m-%d")
         if CIRCUIT["day_date"] != today:
             CIRCUIT["day_date"] = today; CIRCUIT["day_pnl"] = 0
+            # 跨日時必須把暫停縮短，否則 24 小時規則會跨日殘留。
+            # 2026-09-28 觸發後讓機器人停到 09-29 23:57（20 小時零進場）：
+            # 期間 day_pnl 早已歸零、條件看似解除，實際仍在暫停中。
+            if CIRCUIT["paused_until"] > now_ts:
+                CIRCUIT["paused_until"] = now_ts + CIRCUIT_RESET_GRACE
+                print(f"[CIRCUIT] new day: pause cut to +{CIRCUIT_RESET_GRACE}s", flush=True)
         if now_ts < CIRCUIT["paused_until"]:
             rejected.append((t, "熔斷暫停")); continue
 
