@@ -69,8 +69,8 @@ SIM_CAPITAL = 1000
 SIM_BUY_USD = 75
 SIM_MAX_POS = 3
 # 分級流動性門檻
-LIQ_TIER1 = 75000   # 大池：score>=5, buy>=52%, impact<=2%
-LIQ_TIER2 = 35000   # 小池：score>=6, buy>=55%, impact<=1.5%
+LIQ_TIER1 = 300000  # 大池：score>=5, buy>=52%, impact<=2%
+LIQ_TIER2 = 150000  # 小池：score>=5, buy>=52%, impact<=1.5%
 SIM_SL_PCT = -12.0
 # 賣出報價低於本金這個比例 → 判定為流動性崩潰（池子被抽走），
 # 而非價格波動。2026-09-28 的 BUBBLE(-98.2%) 與 Speed(-96.8%) 都是這類：
@@ -85,9 +85,9 @@ LIQ_COLLAPSE_PCT = 55.0
 # 預設關閉（USE_VOL_STOP=False）：k 要用多少是策略決定，而那需要
 # 216 筆以上的樣本才能定。開關關閉期間 atr_pct / vol_stop_pct 照樣
 # 計算並寫進 trajectory.csv，一週後可以直接用真實軌跡比較兩種停損。
-USE_VOL_STOP = False
+USE_VOL_STOP = True
 VOL_K = 2.0               # 停損距離 = k × 15秒報酬標準差
-VOL_STOP_MIN = -6.0       # 不會比這個更緊（低波動時避免一進場就掃出）
+VOL_STOP_MIN = -15.0      # 波動停損只放寬（-15 到 -12），不收緊
 VOL_STOP_MAX = -12.0      # 不會比固定停損更寬
 VOL_MIN_SAMPLES = 20      # 至少 20 個樣本（約 5 分鐘）才啟用
 HIST_MAX = 80             # 價格歷史長度：80 × 15s = 20 分鐘
@@ -494,6 +494,18 @@ def fetch_tokens():
     return tokens
 
 # ============ 模擬交易 ============
+def scale_out_pnl_pct(pos):
+    """so+15 反事實：MFE>=15% 賣40%、MFE>=30% 再賣40%、剩20%跟到實際出場。
+    log-only，不改行為。"""
+    mfe = pos.get("mfe", 0)
+    pnl = pos.get("pnl_pct", 0)
+    if mfe < 15:
+        return pnl
+    if mfe >= 30:
+        return 0.4 * 15 + 0.4 * 30 + 0.2 * pnl
+    return 0.4 * 15 + 0.6 * pnl
+
+
 def run_sim(tokens, now_ts, now_str, first_seen):
     sim = STATE["sim"]
     token_by_addr = {t["address"]: t for t in tokens if t.get("address")}
@@ -619,6 +631,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
                 "sell_impact": pos.get("sell_impact", 0),
                 "mfe": round(pos.get("mfe", 0), 1),
                 "mae": round(pos.get("mae", 0), 1),
+                "so15_pnl_pct": round(scale_out_pnl_pct(pos), 1),
                 "url": pos.get("url", ""),
                 "reason": f"{reason} (最高{pos.get('mfe',0):+.1f}%)",
             })
@@ -684,7 +697,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
         elif liq >= LIQ_TIER2:
             min_score, min_br, max_impact = 5.0, 52, 1.5
         else:
-            rejected.append((t, f"流動性${int(liq/1000)}K<$35K")); continue
+            rejected.append((t, f"流動性${int(liq/1000)}K<$150K")); continue
 
         if t["score"] < min_score:
             rejected.append((t, f"分數{t['score']}<{min_score}")); continue
