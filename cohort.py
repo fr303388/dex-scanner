@@ -63,6 +63,18 @@ def load_cohort_state():
     try:
         with open(COHORT_STATE_PATH, "r", encoding="utf-8") as f:
             COHORT = json.load(f)
+            # Members admitted before seen_once existed. miss == 0 means the
+            # API returned it on the most recent poll, so it has been seen.
+            # miss > 0 means it is currently absent, which tells us nothing
+            # about whether it was ever indexed -- assume NOT seen, because
+            # mislabelling an unobservable token as DEAD inflates the death
+            # rate, which is the number this whole file exists to measure.
+            # Every member expires within COHORT_TTL anyway and is re-admitted
+            # with a correct flag.
+            for _rec in COHORT.values():
+                _rec.setdefault("miss_before", 0)
+                if "seen_once" not in _rec:
+                    _rec["seen_once"] = (_rec.get("miss", 0) == 0)
     except (json.JSONDecodeError, OSError) as e:
         print(f"[cohort] state load failed ({e}); starting empty")
         COHORT = {}
@@ -115,6 +127,8 @@ def seed_cohort(tokens: List[dict], now_ts) -> int:
             "score0": safe_float(t.get("score", 0)),
             "liq0": liq,
             "miss": 0,
+            "miss_before": 0,
+            "seen_once": False,   # set True the first time DexScreener returns it
         }
     return skip
 
@@ -152,11 +166,23 @@ def poll_cohort(now_ts) -> int:
             if base not in best or li > best[base][0]:
                 best[base] = (li, p)
 
+    # A token DexScreener has never indexed accumulates misses from its
+    # first poll and crosses MISS_THRESHOLD while being completely
+    # unobservable. seen_once separates that class from tokens that were
+    # genuinely listed and later disappeared.
+    for addr in best:
+        if addr in COHORT:
+            COHORT[addr]["seen_once"] = True
+
     # miss accounting: only count tokens the API answered for
     for addr in active:
         if addr in failed:
             continue                       # transport failure -> no penalty
         rec = COHORT[addr]
+        # Snapshot BEFORE the reset. The csv row below is built from this
+        # same record, so reading rec["miss"] there always returned 0 and
+        # the column could never carry a non-zero value.
+        rec["miss_before"] = rec.get("miss", 0)
         rec["miss"] = 0 if addr in best else rec.get("miss", 0) + 1
 
     rows = []
@@ -182,7 +208,7 @@ def poll_cohort(now_ts) -> int:
             rec["score0"],
             rec["liq0"],
             li <= 0.0,                             # pool emptied
-            rec["miss"],                           # consecutive misses BEFORE
+            rec.get("miss_before", 0),             # consecutive misses BEFORE
                                                   # this sample; lets the analyzer
                                                   # classify a window by the miss
                                                   # count at that moment, not by

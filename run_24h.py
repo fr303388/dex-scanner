@@ -12,7 +12,7 @@ import os, sys, time, subprocess, datetime
 
 BASE = r"C:\Users\ANGEL\Doubao\chats\2026-09-27\new-chat-10\dex-scanner"
 PY   = r"C:\Users\ANGEL\AppData\Local\Doubao\User Data\sandbox_runtime\bases\c98c5042338ed152c6f10ecd8591889f\python\python.exe"
-TEMP = r"C:\Users\ANGEL\AppData\Local\Temp\opencode"
+TEMP = os.path.join(BASE, "analysis")   # scripts moved out of %TEMP%
 
 REPORT = os.path.join(BASE, "analysis_24h.txt")
 MARKER = os.path.join(BASE, "watchdog.log")   # durable, already watched
@@ -75,6 +75,14 @@ def main():
                     os.path.join(TEMP, "exit_lab.py")))
     body.append(run("4  LIQUIDITY BAND OUTCOMES  (strategy_report5.py)",
                     os.path.join(TEMP, "strategy_report5.py")))
+    # 5 and 6 are the two that exercise the miss/seen_once fix. Without them
+    # the run would never show the corrected DEAD vs UNTRACKABLE split, which
+    # is the whole reason the classification was repaired.
+    body.append(run("5  COHORT HEALTH  (cohort_health.py)",
+                    os.path.join(TEMP, "cohort_health.py")))
+    body.append(run("6  COHORT OUTCOME TAXONOMY  (analyze_cohort.py)",
+                    os.path.join(TEMP, "analyze_cohort.py"),
+                    os.path.join(BASE, "cohort.csv")))
 
     text = "\n".join(body)
     with open(REPORT, "w", encoding="utf-8") as f:
