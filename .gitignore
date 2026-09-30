@@ -26,3 +26,6 @@ privkey*
 # ---- python ----
 __pycache__/
 *.pyc
+
+# GeckoTerminal enrichment rows: runtime data, regenerable
+cohort_gt.csv

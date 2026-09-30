@@ -59,6 +59,11 @@ from flask import Flask, jsonify, send_file, Response, request
 import cohort          # module ref, NOT `from cohort import COHORT` --
                         # load_cohort_state() REBINDS cohort.COHORT, so a
                         # by-name import would keep pointing at the old dict
+import cohort_gt       # GeckoTerminal enrichment: unique buyer counts and
+                        # pump.fun graduation %. Data collection only, it
+                        # cannot affect trading. Writes cohort_gt.csv, kept
+                        # separate so cohort.csv's 13-column header -- which
+                        # every analysis script depends on -- stays intact.
 
 app = Flask(__name__)
 UTC8 = timezone(timedelta(hours=8))
@@ -873,12 +878,19 @@ def scan_cycle():
             skip = cohort.seed_cohort(tokens, now_ts)
             if CYCLE % 2 == 0:
                 cohort.poll_cohort(now_ts)
+            # GeckoTerminal 補強：買家人數 + pump.fun 遷移進度。
+            # 純資料收集，自己有 try/except，絕不影響交易路徑。
+            # 免費層限流很嚴（實測 6 秒間隔也只有 50% 成功），
+            # 所以每 45 個 cycle 最多呼叫一次，429 時指數退避。
+            cohort_gt.enrich_cohort(tokens, now_ts)
         except Exception as ce:
             with open(os.path.join(BASE, "bg_error.log"), "a", encoding="utf-8") as f:
                 import traceback as _tb
                 f.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} cohort (non-fatal) =====\n"
                         f"{_tb.format_exc()}\n")
             print(f"[cohort] recovered from {type(ce).__name__}: {ce}", flush=True)
+        # cohort_gt 必須在 cohort 的 except 之外，否則 cohort 失敗時
+        # 會連帶跳過補強。兩者都不可影響交易。
         STATE["tokens"] = tokens[:25]
         STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
     except Exception as e:
