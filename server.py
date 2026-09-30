@@ -913,14 +913,13 @@ def bg_loop():
             print(f"[BG] error: {e}", flush=True)
         time.sleep(SCAN_INTERVAL)
 
-# ============ Ops status page ============
-# Built because of the 2026-09-29/30 incident: the scanner produced no
-# output for 22 hours and nothing anywhere showed that. A page that renders
-# the *staleness* of each subsystem is the cheapest possible alarm, and it
-# costs nothing when everything is healthy.
+# ============ 運維狀態頁 ============
+# 為什麼有這個：2026-09-29/30 那次事故，掃描器整整 22 小時沒有任何輸出，
+# 而系統裡沒有任何地方顯示這件事。watchdog 當時確實在跑，但它把狀態寫進
+# 一個只有人打開終端機才會看的檔案。把「每個子系統有多舊」畫成頁面，是
+# 最便宜的警報，而且系統健康時成本為零。
 #
-# Read-only. Every path is wrapped: a failure here must never affect
-# trading.
+# 純唯讀。ops() 的每一條路徑都包在例外處理裡，不影響任何交易。
 def _tail(path, n):
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
@@ -937,10 +936,13 @@ def _age(path):
 
 
 def _age_str(sec):
-    if sec is None: return '<span class="bad">missing</span>'
-    if sec < 120:  return '<span class="ok">%ds</span>' % sec
-    if sec < 900:  return '<span class="warn">%dm</span>' % (sec // 60)
-    return '<span class="bad">%dh%dm</span>' % (sec // 3600, (sec % 3600) // 60)
+    """把秒數轉成有顏色的相對時間。None 代表檔案不存在。"""
+    if sec is None: return '<span class="bad">檔案不存在</span>'
+    if sec < 120:  return '<span class="ok">%d 秒</span>' % sec
+    if sec < 900:  return '<span class="warn">%d 分</span>' % (sec // 60)
+    if sec < 86400: return '<span class="bad">%d 小時 %d 分</span>' % (
+        sec // 3600, (sec % 3600) // 60)
+    return '<span class="bad">%.1f 天</span>' % (sec / 86400)
 
 
 @app.route("/ops")
@@ -948,7 +950,7 @@ def ops():
     try:
         import html as _h
         p = lambda x: _h.escape(str(x))
-        rows = []
+        cards = []
 
         def card(title, items):
             li = "".join("<tr><td>%s</td><td class=v>%s</td></tr>" % (p(k), v)
@@ -956,7 +958,7 @@ def ops():
             return ("<div class=card><h3>%s</h3><table>%s</table></div>"
                     % (p(title), li))
 
-        # --- processes ---
+        # --- 程序存活狀態 ---
         def alive(pattern):
             try:
                 r = subprocess.run(
@@ -965,24 +967,34 @@ def ops():
                      "\"Name like '%%python%%'\" | Where-Object { $_.CommandLine "
                      "-like '*%s*' }).ProcessId" % pattern],
                     capture_output=True, text=True, timeout=20)
-                n = [x for x in r.stdout.split() if x.strip().isdigit()]
-                return len(n)
+                return len([x for x in r.stdout.split() if x.strip().isdigit()])
             except Exception:
                 return -1
-        procs = [("server.py", alive("server.py")),
-                 ("dex_watchdog.py", alive("dex_watchdog")),
-                 ("run_24h.py", alive("run_24h"))]
-        procs = [(k, ('<span class="ok">running</span>' if v > 0
-                      else '<span class="bad">NOT RUNNING</span>') if v >= 0
-                  else '<span class="warn">cannot tell</span>') for k, v in procs]
-        rows.append(card("Processes", procs))
 
-        # --- output freshness: the thing that was invisible for 22h ---
-        log_age = _age(os.path.join(BASE, "server_run.log"))
-        wd = _tail(os.path.join(BASE, "watchdog.log"), 400)
-        hb = [l for l in wd if "heartbeat" in l]
+        procs = []
+        for label, pat, desc in (
+                ("server.py", "server.py", "交易掃描器"),
+                ("dex_watchdog.py", "dex_watchdog", "看門狗（自動重啟）"),
+                ("run_24h.py", "run_24h", "24 小時分析排程")):
+            n = alive(pat)
+            if n > 1:
+                cell = ('<span class="bad">重複 %d 個！</span>' % n)
+            elif n == 1:
+                cell = '<span class="ok">執行中</span>'
+            elif n == 0:
+                cell = '<span class="bad">未執行</span>'
+            else:
+                cell = '<span class="warn">無法判斷</span>'
+            procs.append(("%s（%s）" % (label, desc), cell))
+        cards.append(card("程序狀態", procs))
+
+        # --- 輸出新鮮度：22 小時那次的元凶 ---
+        log_path = os.path.join(BASE, "server_run.log")
+        wd_path = os.path.join(BASE, "watchdog.log")
+        log_age = _age(log_path)
+        hb = [l for l in _tail(wd_path, 400) if "heartbeat" in l]
         wd_age = None
-        wd_why = "no heartbeat line in the last 400 log lines"
+        wd_why = "最近 400 行 log 中找不到心跳紀錄"
         if hb:
             raw = hb[-1][:19]
             for fmt in ("%Y-%m-%d %H:%M:%S", "%m-%d %H:%M:%S",
@@ -994,175 +1006,184 @@ def ops():
                 except Exception:
                     continue
             if wd_age is None:
-                # Do not silently report "missing". A status page that hides
-                # its own errors is worse than having no status page at all.
-                wd_why = "could not parse %r from: %s" % (raw, hb[-1][:70])
+                # 不要靜靜顯示「無資料」。會藏起自己錯誤的狀態頁，
+                # 比沒有狀態頁更糟。
+                wd_why = "無法解析時間戳 %r，原始行：%s" % (raw, hb[-1][:70])
         if hb and wd_age is not None:
             hb_cell = _age_str(wd_age)
         elif hb:
-            hb_cell = ('<span class="bad">unparsed</span><br>'
+            hb_cell = ('<span class="bad">解析失敗</span><br>'
                        '<span class=mono>%s</span>' % p(wd_why))
         else:
             hb_cell = '<span class="warn">%s</span>' % p(wd_why)
-        fresh = [("server stdout last write", _age_str(log_age)),
-                 ("watchdog last heartbeat", hb_cell),
-                 ("watchdog.log mtime",
-                  _age_str(_age(os.path.join(BASE, "watchdog.log"))))]
-        # 5 min of silence is the same condition the watchdog treats as dead
+
+        fresh = [("server 輸出最後寫入", _age_str(log_age)),
+                 ("watchdog 最後心跳", hb_cell),
+                 ("watchdog.log 最後寫入", _age_str(_age(wd_path)))]
+        # 5 分鐘無輸出 = watchdog 會判定為死亡的同一個條件
         if log_age is not None and log_age > 300:
-            fresh.append(("VERDICT", '<span class="bad">SILENT %.0f min '
-                          '- watchdog should have restarted this</span>' % (log_age/60)))
-        rows.append(card("Output freshness", fresh))
+            fresh.append(("警告",
+                          '<span class="bad">已靜默 %.0f 分鐘，'
+                          'watchdog 應該已經重啟過</span>' % (log_age / 60)))
+        cards.append(card("輸出新鮮度", fresh))
 
         # --- cohort ---
         try:
-            n_mem = len(cohort.COHORT)
-            obs = [l for l in _tail(os.path.join(BASE, "server_run.log"), 200)
+            obs = [l for l in _tail(log_path, 200)
                    if "[cohort]" in l and "observed" in l]
             last = obs[-1] if obs else ""
-            rate = last.split("=")[1].split("(")[0].strip() if "=" in last else "?"
-            rows.append(card("Cohort", [
-                ("members", n_mem),
-                ("observation rate", p(rate) + "%"),
-                ("last line", '<span class=mono>%s</span>' % p(last[-58:])),
+            # 不要用 split("=")：那會抓到整個 "90%% observed, 200 active" 字串
+            m = re.search(r"(\d+)/(\d+)\s*=\s*(\d+)%", last)
+            rate_txt = ("%s/%s，被觀測到 %s%%" % (m.group(1), m.group(2), m.group(3))
+                        if m else "?")
+            cards.append(card("Cohort 追蹤群", [
+                ("成員數", len(cohort.COHORT)),
+                ("觀測率", rate_txt),
+                ("最後一行", '<span class=mono>%s</span>' % p(last[-58:])),
             ]))
         except Exception as e:
-            rows.append(card("Cohort", [("error", p(e))]))
+            cards.append(card("Cohort 追蹤群", [("錯誤", p(e))]))
 
-        # --- circuit breaker ---
+        # --- 熔斷器 ---
         try:
             c = CIRCUIT
             paused = time.time() < c.get("paused_until", 0)
             left = max(0, int(c.get("paused_until", 0) - time.time()))
-            rows.append(card("Circuit breaker", [
-                ("paused", '<span class="bad">YES, %dm left</span>' % (left//60)
-                 if paused else '<span class="ok">no</span>'),
-                ("day pnl", "%.2f" % c.get("day_pnl", 0)),
-                ("consecutive losses", c.get("consecutive_losses", 0)),
-                ("day date", c.get("day_date", "-")),
+            cards.append(card("熔斷器", [
+                ("是否暫停",
+                 '<span class="bad">是，還剩 %d 分</span>' % (left // 60)
+                 if paused else '<span class="ok">否</span>'),
+                ("當日損益", "%.2f" % c.get("day_pnl", 0)),
+                ("連續虧損次數", c.get("consecutive_losses", 0)),
+                ("統計日期", c.get("day_date", "-")),
             ]))
         except Exception as e:
-            rows.append(card("Circuit breaker", [("error", p(e))]))
+            cards.append(card("熔斷器", [("錯誤", p(e))]))
 
-        # --- portfolio ---
+        # --- 影子帳戶 ---
         try:
             sim = STATE["sim"]
-            wins = [t for t in sim["trades"] if t.get("pnl_pct", 0) > 0]
-            rows.append(card("Shadow portfolio", [
-                ("cash", "$%.2f" % sim.get("cash", 0)),
-                ("total pnl", '<span class="%s">$%.2f</span>' % (
-                    "ok" if sim.get("stats", {}).get("total_pnl", 0) >= 0 else "bad",
-                    sim.get("stats", {}).get("total_pnl", 0))),
-                ("open positions", len(sim.get("positions", []))),
-                ("trades", len(sim.get("trades", []))),
-                ("wins", "%d of %d sells" % (len(wins), sum(
-                    1 for t in sim["trades"] if t.get("action") == "SELL"))),
+            sells = [t for t in sim.get("trades", []) if t.get("action") == "SELL"]
+            wins = [t for t in sells if (t.get("pnl_pct") or 0) > 0]
+            pnl = sim.get("stats", {}).get("total_pnl", 0)
+            cards.append(card("影子帳戶", [
+                ("現金", "$%.2f" % sim.get("cash", 0)),
+                ("總損益", '<span class="%s">$%.2f</span>' % (
+                    "ok" if pnl >= 0 else "bad", pnl)),
+                ("持倉中", len(sim.get("positions", []))),
+                ("交易筆數", len(sim.get("trades", []))),
+                ("勝率", "賣出 %d 筆中勝 %d 筆" % (len(sells), len(wins))),
             ]))
         except Exception as e:
-            rows.append(card("Shadow portfolio", [("error", p(e))]))
+            cards.append(card("影子帳戶", [("錯誤", p(e))]))
 
-        # --- geckoterminal enrichment ---
+        # --- GeckoTerminal 補強 ---
         try:
             st = cohort_gt.gt_stats()
             gp = os.path.join(BASE, "cohort_gt.csv")
-            nrows = max(0, sum(1 for _ in open(gp, encoding="utf-8")) - 1) \
-                if os.path.exists(gp) else 0
-            rows.append(card("GeckoTerminal enrichment", [
-                ("rows recorded", nrows),
-                ("calls ok", st.get("ok", 0)),
-                ("rate limited (429)", '<span class="%s">%d</span>' % (
+            nrows = 0
+            if os.path.exists(gp):
+                with open(gp, encoding="utf-8") as f:
+                    nrows = max(0, sum(1 for _ in f) - 1)
+            cards.append(card("GeckoTerminal 補強", [
+                ("已記錄列數", nrows),
+                ("成功呼叫", st.get("ok", 0)),
+                ("被限流 429", '<span class="%s">%d</span>' % (
                     "ok" if st.get("429", 0) == 0 else "warn", st.get("429", 0))),
-                ("skipped in backoff", st.get("skipped_backoff", 0)),
-                ("last write", _age_str(_age(gp))),
+                ("退避中跳過", st.get("skipped_backoff", 0)),
+                ("最後寫入", _age_str(_age(gp))),
             ]))
         except Exception as e:
-            rows.append(card("GeckoTerminal enrichment", [("error", p(e))]))
+            cards.append(card("GeckoTerminal 補強", [("錯誤", p(e))]))
 
-        # --- data files ---
-        files = ["decisions.csv", "cohort.csv", "cohort_gt.csv",
-                 "trajectory.csv", "sim_portfolio.json", "server_run.log",
-                 "watchdog.log", "analysis_24h.txt", "bg_error.log"]
-        fr = []
-        for fn in files:
+        # --- 資料檔案 ---
+        rows_files = []
+        for fn in ("decisions.csv", "cohort.csv", "cohort_gt.csv",
+                   "trajectory.csv", "sim_portfolio.json", "server_run.log",
+                   "watchdog.log", "analysis_24h.txt", "bg_error.log"):
             fp = os.path.join(BASE, fn)
             if not os.path.exists(fp):
-                fr.append((fn, '<span class="warn">not created yet</span>'))
+                rows_files.append((fn, '<span class="warn">尚未建立</span>'))
                 continue
             try:
-                sz = os.path.getsize(fp)
-                fr.append((fn, "%.1f MB &middot; " % (sz / 1048576)
-                           + _age_str(_age(fp))))
+                rows_files.append((fn, "%.1f MB &middot; %s" % (
+                    os.path.getsize(fp) / 1048576, _age_str(_age(fp)))))
             except Exception:
-                fr.append((fn, "?"))
-        rows.append(card("Data files", fr))
+                rows_files.append((fn, "?"))
+        cards.append(card("資料檔案", rows_files))
 
-        # --- scheduled 24h run ---
+        # --- 24 小時分析排程 ---
         rep = os.path.join(BASE, "analysis_24h.txt")
+        wd_all = _tail(wd_path, 40)
         if os.path.exists(rep):
-            m = re.search(r"DONE\s+wrote .*?\((\d+) bytes\)",
-                          "\n".join(wd[-40:]))
-            state = ('done, ' + _age_str(_age(rep))) if m else \
-                    '<span class="warn">running or armed</span>'
-            rows.append(card("24h analysis", [
-                ("state", state),
-                ("report", '<a href="/ops/report">open analysis_24h.txt</a>'),
+            m = re.search(r"DONE\s+wrote .*?\((\d+) bytes\)", "\n".join(wd_all))
+            state = ("已完成，" + _age_str(_age(rep))) if m else \
+                    '<span class="warn">執行中或等待中</span>'
+            cards.append(card("24 小時分析", [
+                ("狀態", state),
+                ("報告", '<a href="/ops/report">開啟 analysis_24h.txt</a>'),
             ]))
         else:
-            rows.append(card("24h analysis", [
-                ("state", '<span class="warn">armed, fires 2026-10-01 20:05</span>')]))
+            cards.append(card("24 小時分析", [
+                ("狀態", '<span class="warn">已排程，'
+                         '2026-10-01 20:05 觸發</span>')]))
 
-        # --- logs ---
-        log_html = ""
-        for title, path, n in (("server_run.log (last 40)", "server_run.log", 40),
-                               ("watchdog.log (last 15)", "watchdog.log", 15),
-                               ("bg_error.log (last 10)", "bg_error.log", 10)):
-            lines = _tail(os.path.join(BASE, path), n)
-            log_html += ("<div class=card><h3>%s</h3><pre>%s</pre></div>"
-                         % (p(title), p("\n".join(lines) or "(empty)")))
+        # --- log 尾端 ---
+        logs = ""
+        for title, fn, n in (("server_run.log（最後 40 行）", "server_run.log", 40),
+                             ("watchdog.log（最後 15 行）", "watchdog.log", 15),
+                             ("bg_error.log（最後 10 行）", "bg_error.log", 10)):
+            body = "\n".join(_tail(os.path.join(BASE, fn), n)) or "(空)"
+            logs += ("<div class=card><h3>%s</h3><pre>%s</pre></div>"
+                     % (p(title), p(body)))
 
-        # NOTE: do not use %-formatting on this template. The CSS contains
-        # literal percent signs (width:100%) which %-formatting treats as
-        # format specifiers, and the route then dies with a bare 500 and an
-        # empty body. Token substitution only.
+        # 注意：這裡不能用 % 格式化。CSS 內含字面百分比（width:100%），
+        # 會被 % 格式化當成格式代碼，而且那行在 try 之外，路由會回傳
+        # 內容為空的 HTTP 500，log 只留一行「GET /ops 500」，完全沒有
+        # traceback。只用 token 取代。
         html = """<!doctype html><html><head><meta charset=utf-8>
-<title>dex-scanner ops</title><meta http-equiv=refresh content=15>
+<title>dex-scanner 運維狀態</title><meta http-equiv=refresh content=15>
 <style>
- body{background:#0d1117;color:#c9d1d9;font:14px/1.5 -apple-system,Segoe UI,Microsoft JhengHei,sans-serif;margin:0;padding:20px}
- h1{font-size:20px;margin:0 0 4px} h3{font-size:13px;margin:0 0 10px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+ body{background:#0d1117;color:#c9d1d9;font:14px/1.6 -apple-system,Segoe UI,Microsoft JhengHei,sans-serif;margin:0;padding:20px}
+ h1{font-size:20px;margin:0 0 4px}
+ h3{font-size:13px;margin:0 0 10px;color:#8b949e;letter-spacing:.5px}
  .sub{color:#8b949e;font-size:12px;margin-bottom:18px}
  .grid{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
- .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;min-width:290px;flex:1;max-width:420px}
+ .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;min-width:300px;flex:1;max-width:430px}
  table{border-collapse:collapse;width:100%} td{padding:3px 0;vertical-align:top}
- td:first-child{color:#8b949e;padding-right:12px;white-space:nowrap}
+ td:first-child{color:#8b949e;padding-right:12px}
  td.v{text-align:right;font-variant-numeric:tabular-nums}
  .ok{color:#3fb950}.warn{color:#f0b429}.bad{color:#f85149}
  .mono{font-family:ui-monospace,Consolas,monospace;font-size:11px}
  pre{font-family:ui-monospace,Consolas,monospace;font-size:11px;white-space:pre-wrap;margin:0;max-height:300px;overflow:auto;color:#8b949e}
  a{color:#58a6ff}
 </style></head><body>
-<h1>dex-scanner ops</h1>
-<div class=sub>auto-refresh 15s &middot; server time __TIME__ &middot; read-only</div>
+<h1>dex-scanner 運維狀態</h1>
+<div class=sub>每 15 秒自動重新整理 &middot; 伺服器時間 __TIME__ &middot; 唯讀頁面</div>
 <div class=grid>__CARDS__</div>
 __LOGS__
 </body></html>"""
         html = (html.replace("__TIME__",
-                             p(datetime.now(UTC8).strftime("%Y-%m-%d %H:%M:%S UTC+8")))
-                    .replace("__CARDS__", "".join(rows))
-                    .replace("__LOGS__", log_html))
+                             p(datetime.now(UTC8).strftime("%Y-%m-%d %H:%M:%S")))
+                    .replace("__CARDS__", "".join(cards))
+                    .replace("__LOGS__", logs))
         return Response(html, mimetype="text/html")
     except Exception:
         import traceback
-        return Response("<pre>ops page error:\n" + traceback.format_exc()
+        return Response("<pre>狀態頁錯誤：\n" + traceback.format_exc()
                         + "</pre>", mimetype="text/plain", status=500)
 
 
 @app.route("/ops/report")
 def ops_report():
-    p = os.path.join(BASE, "analysis_24h.txt")
-    if not os.path.exists(p):
-        return Response("analysis_24h.txt not written yet. The 24h runner fires "
-                        "at 2026-10-01 20:05.", mimetype="text/plain", status=404)
-    with open(p, "r", encoding="utf-8", errors="replace") as f:
+    fp = os.path.join(BASE, "analysis_24h.txt")
+    if not os.path.exists(fp):
+        return Response(
+            "analysis_24h.txt 尚未產生。\n\n"
+            "24 小時分析排程預計在 2026-10-01 20:05 觸發，"
+            "完成後重新整理本頁即可看到。",
+            mimetype="text/plain", status=404)
+    with open(fp, "r", encoding="utf-8", errors="replace") as f:
         return Response(f.read(), mimetype="text/plain")
 
 
