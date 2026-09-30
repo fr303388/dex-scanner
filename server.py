@@ -202,7 +202,14 @@ def jup_quote(input_mint, output_mint, amount_lamports, slippage_bps=500):
 PENDING = {}
 TRIGGER_TRACK = {}
 ONCHAIN_CACHE = {}
-ONCHAIN_FAIL = {}  # addr -> retry_after_ts  # addr -> list of (ts, price, volume) snapshots
+ONCHAIN_FAIL = {}  # addr -> retry_after_ts
+# 鏈上檢查「完全沒有覆蓋」的項目。必須和「查了但拿不到」分開：前者是
+# 覆蓋缺口，要補檢查；後者是資料問題，要重試或換來源。混在一起就看不出
+# 該修哪一個。/ops 會把這份清單顯示出來，不再只留在一行註解裡。
+# getTokenLargestAccounts 在公共 RPC 會 429，所以集中度長期缺席。實測過
+# getProgramAccounts 沒被限流（連續 10 次全成功），但接上去之前先讓缺口可見。
+ONCHAIN_NOT_CHECKED = ("top10", "devHold", "bundler", "insider",
+                      "sniper", "wash", "lpLocked")  # addr -> list of (ts, price, volume) snapshots
 def update_trigger_history(tokens, now_ts):
     for t in tokens:
         addr = t["address"]
@@ -338,11 +345,29 @@ def safe_float(v, default=0):
     except: return default
 
 def check_onchain_risk(addr):
-    """檢查 mint/freeze 權限 + 集中度。結果快取（不可變）"""
+    """Fail-closed on-chain screen.
+
+    Returns (verdict, reason, unknown).
+
+      verdict  True  only if every attempted check returned a value and it
+                    passed. A field we could not read lands in `unknown`
+                    and fails the screen, it never contributes to a pass.
+      unknown  list of fields we tried to read and did not get.
+      reason   human readable, includes the unknown list so that
+                decisions.csv records how often a candidate was unverified.
+
+    Mirrors the design in nhovongoc0-max/meme-radar src/scoring.mjs, where
+    `checks` is built so a null value can never pass.
+    """
     if addr in ONCHAIN_CACHE:
         return ONCHAIN_CACHE[addr]
     if ONCHAIN_FAIL.get(addr, 0) > time.time():
-        return None, "RPC退避中"
+        return None, "RPC退避中", []
+
+    def bail(reason):
+        ONCHAIN_FAIL[addr] = time.time() + 300
+        return None, reason, []
+
     try:
         r = requests.post("https://api.mainnet-beta.solana.com", json={
             "jsonrpc":"2.0","id":1,"method":"getAccountInfo",
@@ -350,21 +375,58 @@ def check_onchain_risk(addr):
         }, timeout=8)
         j = r.json()
         if "error" in j:
-            ONCHAIN_FAIL[addr] = time.time() + 300
-            return None, "RPC不可用"
-        info = j["result"]["value"]["data"]["parsed"]["info"]
-        if info.get("mintAuthority"):
-            verdict = (False, "mint權限未撤")
-        elif info.get("freezeAuthority"):
-            verdict = (False, "freeze權限未撤")
-        else:
-            # getTokenLargestAccounts 常被公共RPC限流，暫時跳過集中度檢查
-            verdict = (True, "")
-        ONCHAIN_CACHE[addr] = verdict
-        return verdict
+            return bail("RPC不可用")
+
+        value = (j.get("result") or {}).get("value")
+        if not value:
+            # The mint account does not exist. That is a definitive finding,
+            # not a data gap: there is nothing here to trade.
+            ONCHAIN_CACHE[addr] = (False, "mint帳戶不存在", [])
+            return ONCHAIN_CACHE[addr]
+        # data is a base64 string for any account that is not a parsed mint,
+        # so guard the shape instead of letting .get() raise.
+        data = value.get("data")
+        info = (data.get("parsed") or {}).get("info") if isinstance(data, dict) else None
+        if not isinstance(info, dict):
+            return bail("非mint帳戶或資料格式異常")
+
+        # Every check is "we got a value AND the value is acceptable".
+        # A key that is absent means we learned nothing, which is not the
+        # same as the key being present and null.
+        #
+        # NOTE: supply was tried here as a third check and removed. Measured on
+        # 2026-10-01: the public RPC returns supply: "0" for wrapped SOL,
+        # which is a live mint with a large real supply. So supply == 0
+        # cannot be distinguished from an RPC artefact, the check is unusable,
+        # and it would have rejected a good token. Do not re-add it without a
+        # source that returns a correct value.
+        checks = {}
+        unknown = []
+        for key, label in (("mintAuthority", "mint"), ("freezeAuthority", "freeze")):
+            if key in info:
+                checks[label] = info[key] is None      # null == revoked == good
+            else:
+                unknown.append(key)
+
+        failed = sorted(k for k, ok in checks.items() if not ok)
+        if unknown:
+            # Unknown is a failure, and it says so. Before this change an
+            # unverified token returned (True, "") and was indistinguishable
+            # from a fully checked one.
+            reason = "鏈上未驗證:" + ",".join(unknown)
+            ONCHAIN_CACHE[addr] = (False, reason, unknown)
+            return ONCHAIN_CACHE[addr]
+
+        if failed:
+            labels = {"mint": "mint權限未撤", "freeze": "freeze權限未撤"}
+            reason = ";".join(labels.get(f, f) for f in failed)
+            ONCHAIN_CACHE[addr] = (False, reason, [])
+            return ONCHAIN_CACHE[addr]
+
+        ONCHAIN_CACHE[addr] = (True, "", [])
+        return ONCHAIN_CACHE[addr]
     except Exception as e:
-        ONCHAIN_FAIL[addr] = time.time() + 300
-        return None, f"RPC:{type(e).__name__}"
+        return bail(f"RPC:{type(e).__name__}")
 
 def score_token(t):
     s = 0; reasons = []
@@ -741,7 +803,7 @@ def run_sim(tokens, now_ts, now_str, first_seen):
             rejected.append((t, "熔斷暫停")); continue
 
         # 鏈上風險檢查
-        verdict, risk_reason = check_onchain_risk(addr)
+        verdict, risk_reason, _unknown = check_onchain_risk(addr)
         if verdict is None:
             rejected.append((t, "鏈上資料不可用")); continue
         if not verdict:
@@ -1076,6 +1138,21 @@ def ops():
             ]))
         except Exception as e:
             cards.append(card("影子帳戶", [("錯誤", p(e))]))
+
+        # --- 鏈上檢查覆蓋範圍 ---
+        # 通過不等於驗證完畢。把沒查的項目攤在這裡，比留在一行註解裡有用。
+        try:
+            done = "mint 權限 / freeze 權限"
+            missing = ", ".join(ONCHAIN_NOT_CHECKED)
+            failclosed = "是（拿不到資料即判定不通過）"
+            cards.append(card("鏈上檢查覆蓋範圍", [
+                ("已檢查", done),
+                ("未檢查", '<span class="warn">%s</span>' % p(missing)),
+                ("未知是否通過", failclosed),
+                ("已知缺席原因", "getTokenLargestAccounts 在公共 RPC 會 429"),
+            ]))
+        except Exception as e:
+            cards.append(card("鏈上檢查覆蓋範圍", [("錯誤", p(e))]))
 
         # --- GeckoTerminal 補強 ---
         try:
