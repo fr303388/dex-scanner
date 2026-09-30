@@ -77,7 +77,7 @@ def main():
         log("selftest: expected stale=False while the server is logging")
         return
 
-    log("watchdog started  (stale threshold %ds, heartbeat every %ds)"
+    log("watchdog started  (stale threshold %ds, heartbeat every %d min)"
         % (STALE_SECS, HEARTBEAT))
     last_restart = 0.0
     n = 0
