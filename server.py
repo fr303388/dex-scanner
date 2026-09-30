@@ -853,11 +853,22 @@ def scan_cycle():
         save_first_seen(first_seen)
         save_sim(STATE["sim"])
         # ---- cohort: independent, censoring-free population tracking ----
+        # cohort 是「附加的資料收集」，不是交易路徑的一部分。
+        # 它壞掉時（例如 DexScreener 對某個 token 回 {"pairs": null}）
+        # 絕不能讓整個掃描循環中斷，否則 34 筆交易記錄會停寫而
+        # 沒有人發現。把例外壓在這裡，只記錄、不中斷。
         global CYCLE
         CYCLE += 1
-        skip = cohort.seed_cohort(tokens, now_ts)
-        if CYCLE % 2 == 0:
-            cohort.poll_cohort(now_ts)
+        try:
+            skip = cohort.seed_cohort(tokens, now_ts)
+            if CYCLE % 2 == 0:
+                cohort.poll_cohort(now_ts)
+        except Exception as ce:
+            with open(os.path.join(BASE, "bg_error.log"), "a", encoding="utf-8") as f:
+                import traceback as _tb
+                f.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} cohort (non-fatal) =====\n"
+                        f"{_tb.format_exc()}\n")
+            print(f"[cohort] recovered from {type(ce).__name__}: {ce}", flush=True)
         STATE["tokens"] = tokens[:25]
         STATE["scanned_at"] = datetime.now(UTC8).strftime("%H:%M:%S")
     except Exception as e:

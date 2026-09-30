@@ -139,7 +139,7 @@ def poll_cohort(now_ts) -> int:
             resp = requests.get(url, timeout=10)
             if resp.status_code != 200:
                 raise RuntimeError(f"HTTP {resp.status_code}")
-            pairs = resp.json().get("pairs", [])
+            pairs = resp.json().get("pairs", []) or []
         except Exception as e:
             print(f"[cohort] fetch error: {e}")
             failed.update(batch)      # API gap, NOT a token miss

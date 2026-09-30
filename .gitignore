@@ -14,6 +14,8 @@
 # were used to hand-edit server.py. The real history is in git; these are noise.
 *.bak
 *.bak-*
+# rotated stdout/stderr captures: server_run.log.dead-*, *.err.dead-*
+*.dead-*
 fix_*.py
 
 # ---- secrets ----
