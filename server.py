@@ -1,5 +1,5 @@
 """迷因幣雷達 V3.1 — 背景自主掃描、mint address 管理、Jupiter 可成交報價"""
-import requests, time, json, os, subprocess, shutil, threading, csv, re
+import requests, time, json, os, subprocess, shutil, threading, csv, re, collections
 BASE = os.path.dirname(os.path.abspath(__file__))
 DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
 TRAJECTORY_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trajectory.csv")
@@ -208,8 +208,41 @@ ONCHAIN_FAIL = {}  # addr -> retry_after_ts
 # 該修哪一個。/ops 會把這份清單顯示出來，不再只留在一行註解裡。
 # getTokenLargestAccounts 在公共 RPC 會 429，所以集中度長期缺席。實測過
 # getProgramAccounts 沒被限流（連續 10 次全成功），但接上去之前先讓缺口可見。
-ONCHAIN_NOT_CHECKED = ("top10", "devHold", "bundler", "insider",
-                      "sniper", "wash", "lpLocked")  # addr -> list of (ts, price, volume) snapshots
+# Not attempted at all. Distinct from "attempted and came back empty": top10
+# IS attempted and logged (see holder_concentration), it just cannot gate,
+# because measured 0 on pump.fun curve tokens and 250,951 on a live .7M
+# token, and r(top1, survived) = +0.000. devHold etc. need a paid source.
+ONCHAIN_NOT_CHECKED = ("devHold", "bundler", "insider", "sniper",
+                      "wash", "lpLocked")
+# SPL token programs. A Token-2022 mint must be queried on the 2022 program:
+# measured, querying a Token-2022 mint on the legacy program returns 0
+# accounts, which would look like "no holders" instead of "wrong program".
+TOKEN_PROGRAM_2022   = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+TOKEN_PROGRAM_LEGACY = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+TOKEN_ACCT_SIZE      = 165      # SPL token account length
+TOKEN_AMOUNT_OFFSET  = 64       # u64 LE amount inside the account
+# Top-10 holder share above which a token is rejected. 1.0 means this can
+# never fire, which is deliberate and is the third value tried:
+#   0.995 blocked COLLECT, a live $150k+ token whose top10 is 99.6%
+#   the measured range across real tokens is 76% to 99.6%, so any threshold
+#   low enough to matter sits inside the noise
+#   r(top1, survived) = +0.000 across the 24 stopped-out trades, so no
+#     threshold has been shown to separate dead from alive at all
+# Lower this only on evidence, never on a single example.
+ONCHAIN_MAX_TOP10 = 1.0
+# Above this holder count we stop caring. Measured: STONK, a live token with
+# $2.7M liquidity, has 250,951 accounts. A wrapped-SOL mint produced a 37.8 MB
+# partial response that would not parse at all. This is a coverage limit on
+# our own measurement, so hitting it says nothing about the token.
+ONCHAIN_HOLDER_SOFT_CAP = 20000
+# addr -> (holders, top1, top10) for the most recent successful measurement.
+# Kept so /ops can show the observed distribution. Without it there is no way
+# to choose a threshold on evidence, only on a guess.
+ONCHAIN_LAST_CONC = {}
+# Why the concentration measurement came back empty, tallied. This is the
+# honest state of the data: most of the population cannot be measured with a
+# free public endpoint, and that number should be visible rather than buried.
+ONCHAIN_CONC_GAPS = []  # addr -> list of (ts, price, volume) snapshots
 def update_trigger_history(tokens, now_ts):
     for t in tokens:
         addr = t["address"]
@@ -344,6 +377,68 @@ def safe_float(v, default=0):
     try: return float(v)
     except: return default
 
+def _rpc_call(method, params, timeout=12):
+    r = requests.post("https://api.mainnet-beta.solana.com",
+                      json={"jsonrpc": "2.0", "id": 1,
+                            "method": method, "params": params},
+                      timeout=timeout)
+    j = r.json()
+    if "error" in j:
+        raise RuntimeError(str(j["error"].get("message", "rpc"))[:60])
+    return j.get("result")
+
+
+def holder_concentration(addr, is_token_2022):
+    """top1 / top10 / holder count for one mint, in a single request.
+
+    Returns (holders, top1, top10, reason). Never raises. reason is "" on
+    success. On failure the three data slots are all None and reason explains
+    why -- kept in its own slot so a reason string can never be mistaken for
+    a measurement. The first version returned the reason in slot 2 and the
+    caller read slot 1, which silently logged None.
+    Measured: 380-1330 ms, 45 KB with dataSlice, and 10 of 10 back-to-back
+    calls succeeded on the public RPC where getTokenLargestAccounts returns
+    429 every time.
+    """
+    program = TOKEN_PROGRAM_2022 if is_token_2022 else TOKEN_PROGRAM_LEGACY
+    try:
+        res = _rpc_call("getProgramAccounts", [program, {
+            "encoding": "base64",
+            "filters": [{"dataSize": TOKEN_ACCT_SIZE},
+                        {"memcmp": {"offset": 0, "bytes": addr}}],
+            # just the u64 amount; without this the response doubles in size
+            "dataSlice": {"offset": TOKEN_AMOUNT_OFFSET, "length": 8},
+        }], timeout=20)
+    except Exception as e:
+        return None, None, None, "concentration RPC:%s" % type(e).__name__
+    if res is None:
+        return None, None, None, "concentration 無回應"
+
+    accounts = res or []
+    if len(accounts) > ONCHAIN_HOLDER_SOFT_CAP:
+        return None, None, None, ("concentration 超過持有人上限 %d"
+                                  % ONCHAIN_HOLDER_SOFT_CAP)
+
+    import base64 as _b64
+    amounts = []
+    for a in accounts:
+        try:
+            blob = a["account"]["data"][0]
+            amounts.append(int.from_bytes(_b64.b64decode(blob)[:8], "little"))
+        except Exception:
+            continue
+    amounts = [x for x in amounts if x > 0]
+    if not amounts:
+        # Accounts exist but none hold a balance. Either a fully distributed
+        # token or a honeypot, and we cannot tell which from this call.
+        return None, None, None, "concentration 無非零持幣帳戶"
+
+    total = float(sum(amounts))
+    amounts.sort(reverse=True)
+    return (len(amounts), amounts[0] / total,
+            sum(amounts[:10]) / total, "")
+
+
 def check_onchain_risk(addr):
     """Fail-closed on-chain screen.
 
@@ -407,6 +502,23 @@ def check_onchain_risk(addr):
                 checks[label] = info[key] is None      # null == revoked == good
             else:
                 unknown.append(key)
+
+        # Holder concentration. LOG-ONLY: measured, stored, never blocking.
+        # See the block comment above for the three measurements that killed
+        # the gating version, and for why a risk indicator must not fail
+        # closed the way a safety property must.
+        #
+        # Only attempted once the authority checks have passed, so a token we
+        # are about to reject does not cost a second RPC round trip.
+        if checks and all(checks.values()):
+            is_2022 = bool(info.get("extensions"))
+            holders, top1, top10, conc_reason = holder_concentration(addr, is_2022)
+            if conc_reason:
+                # A coverage limit, recorded as such. Deliberately NOT added
+                # to `unknown`, which blocks.
+                ONCHAIN_CONC_GAPS.append(conc_reason.split(":")[0])
+            else:
+                ONCHAIN_LAST_CONC[addr] = (holders, top1, top10)
 
         failed = sorted(k for k, ok in checks.items() if not ok)
         if unknown:
@@ -1139,6 +1251,31 @@ def ops():
         except Exception as e:
             cards.append(card("影子帳戶", [("錯誤", p(e))]))
 
+        # --- 實測的持幣集中度（僅記錄，不設閘門）---
+        try:
+            conc = list(ONCHAIN_LAST_CONC.values())
+            gaps = collections.Counter(ONCHAIN_CONC_GAPS)
+            rows_c = []
+            if conc:
+                t1 = sorted(c[1] for c in conc)
+                t10 = sorted(c[2] for c in conc)
+                hd = sorted(c[0] for c in conc)
+                rows_c.append(("已量測", "%d 個代幣" % len(conc)))
+                rows_c.append(("top1 中位", "%.1f%%" % (t1[len(t1)//2]*100)))
+                rows_c.append(("top10 中位", "%.1f%%" % (t10[len(t10)//2]*100)))
+                rows_c.append(("top10 區間", "%.1f%% ~ %.1f%%" % (t10[0]*100, t10[-1]*100)))
+                rows_c.append(("持幣人數中位", "%d" % hd[len(hd)//2]))
+            else:
+                rows_c.append(("已量測", "0（尚未有代幣通過權限檢查並完成量測）"))
+            if gaps:
+                rows_c.append(("量不到的原因", p(", ".join("%s×%d" % (k[:16], v)
+                                                            for k, v in gaps.most_common(4)))))
+            rows_c.append(("是否設閘門", '<span class="warn">否，僅記錄</span>'))
+            rows_c.append(("原因", "自由端點無法量到多數幣，且 r=0.000 無區別力"))
+            cards.append(card("持幣集中度（實測）", rows_c))
+        except Exception as e:
+            cards.append(card("持幣集中度（實測）", [("錯誤", p(e))]))
+
         # --- 鏈上檢查覆蓋範圍 ---
         # 通過不等於驗證完畢。把沒查的項目攤在這裡，比留在一行註解裡有用。
         try:
@@ -1146,7 +1283,7 @@ def ops():
             missing = ", ".join(ONCHAIN_NOT_CHECKED)
             failclosed = "是（拿不到資料即判定不通過）"
             cards.append(card("鏈上檢查覆蓋範圍", [
-                ("已檢查", done),
+                ("已檢查", done + " / top10（僅記錄）"),
                 ("未檢查", '<span class="warn">%s</span>' % p(missing)),
                 ("未知是否通過", failclosed),
                 ("已知缺席原因", "getTokenLargestAccounts 在公共 RPC 會 429"),
