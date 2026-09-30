@@ -1,5 +1,5 @@
 """迷因幣雷達 V3.1 — 背景自主掃描、mint address 管理、Jupiter 可成交報價"""
-import requests, time, json, os, subprocess, shutil, threading, csv
+import requests, time, json, os, subprocess, shutil, threading, csv, re
 BASE = os.path.dirname(os.path.abspath(__file__))
 DECISION_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "decisions.csv")
 TRAJECTORY_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trajectory.csv")
@@ -912,6 +912,259 @@ def bg_loop():
         except Exception as e:
             print(f"[BG] error: {e}", flush=True)
         time.sleep(SCAN_INTERVAL)
+
+# ============ Ops status page ============
+# Built because of the 2026-09-29/30 incident: the scanner produced no
+# output for 22 hours and nothing anywhere showed that. A page that renders
+# the *staleness* of each subsystem is the cheapest possible alarm, and it
+# costs nothing when everything is healthy.
+#
+# Read-only. Every path is wrapped: a failure here must never affect
+# trading.
+def _tail(path, n):
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            return f.read().splitlines()[-n:]
+    except Exception:
+        return []
+
+
+def _age(path):
+    try:
+        return time.time() - os.path.getmtime(path)
+    except Exception:
+        return None
+
+
+def _age_str(sec):
+    if sec is None: return '<span class="bad">missing</span>'
+    if sec < 120:  return '<span class="ok">%ds</span>' % sec
+    if sec < 900:  return '<span class="warn">%dm</span>' % (sec // 60)
+    return '<span class="bad">%dh%dm</span>' % (sec // 3600, (sec % 3600) // 60)
+
+
+@app.route("/ops")
+def ops():
+    try:
+        import html as _h
+        p = lambda x: _h.escape(str(x))
+        rows = []
+
+        def card(title, items):
+            li = "".join("<tr><td>%s</td><td class=v>%s</td></tr>" % (p(k), v)
+                         for k, v in items)
+            return ("<div class=card><h3>%s</h3><table>%s</table></div>"
+                    % (p(title), li))
+
+        # --- processes ---
+        def alive(pattern):
+            try:
+                r = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command",
+                     "(Get-CimInstance Win32_Process -Filter "
+                     "\"Name like '%%python%%'\" | Where-Object { $_.CommandLine "
+                     "-like '*%s*' }).ProcessId" % pattern],
+                    capture_output=True, text=True, timeout=20)
+                n = [x for x in r.stdout.split() if x.strip().isdigit()]
+                return len(n)
+            except Exception:
+                return -1
+        procs = [("server.py", alive("server.py")),
+                 ("dex_watchdog.py", alive("dex_watchdog")),
+                 ("run_24h.py", alive("run_24h"))]
+        procs = [(k, ('<span class="ok">running</span>' if v > 0
+                      else '<span class="bad">NOT RUNNING</span>') if v >= 0
+                  else '<span class="warn">cannot tell</span>') for k, v in procs]
+        rows.append(card("Processes", procs))
+
+        # --- output freshness: the thing that was invisible for 22h ---
+        log_age = _age(os.path.join(BASE, "server_run.log"))
+        wd = _tail(os.path.join(BASE, "watchdog.log"), 400)
+        hb = [l for l in wd if "heartbeat" in l]
+        wd_age = None
+        wd_why = "no heartbeat line in the last 400 log lines"
+        if hb:
+            raw = hb[-1][:19]
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%m-%d %H:%M:%S",
+                        "%Y-%m-%d %H:%M", "%m-%d %H:%M"):
+                try:
+                    wd_age = time.time() - time.mktime(time.strptime(raw, fmt))
+                    wd_why = ""
+                    break
+                except Exception:
+                    continue
+            if wd_age is None:
+                # Do not silently report "missing". A status page that hides
+                # its own errors is worse than having no status page at all.
+                wd_why = "could not parse %r from: %s" % (raw, hb[-1][:70])
+        if hb and wd_age is not None:
+            hb_cell = _age_str(wd_age)
+        elif hb:
+            hb_cell = ('<span class="bad">unparsed</span><br>'
+                       '<span class=mono>%s</span>' % p(wd_why))
+        else:
+            hb_cell = '<span class="warn">%s</span>' % p(wd_why)
+        fresh = [("server stdout last write", _age_str(log_age)),
+                 ("watchdog last heartbeat", hb_cell),
+                 ("watchdog.log mtime",
+                  _age_str(_age(os.path.join(BASE, "watchdog.log"))))]
+        # 5 min of silence is the same condition the watchdog treats as dead
+        if log_age is not None and log_age > 300:
+            fresh.append(("VERDICT", '<span class="bad">SILENT %.0f min '
+                          '- watchdog should have restarted this</span>' % (log_age/60)))
+        rows.append(card("Output freshness", fresh))
+
+        # --- cohort ---
+        try:
+            n_mem = len(cohort.COHORT)
+            obs = [l for l in _tail(os.path.join(BASE, "server_run.log"), 200)
+                   if "[cohort]" in l and "observed" in l]
+            last = obs[-1] if obs else ""
+            rate = last.split("=")[1].split("(")[0].strip() if "=" in last else "?"
+            rows.append(card("Cohort", [
+                ("members", n_mem),
+                ("observation rate", p(rate) + "%"),
+                ("last line", '<span class=mono>%s</span>' % p(last[-58:])),
+            ]))
+        except Exception as e:
+            rows.append(card("Cohort", [("error", p(e))]))
+
+        # --- circuit breaker ---
+        try:
+            c = CIRCUIT
+            paused = time.time() < c.get("paused_until", 0)
+            left = max(0, int(c.get("paused_until", 0) - time.time()))
+            rows.append(card("Circuit breaker", [
+                ("paused", '<span class="bad">YES, %dm left</span>' % (left//60)
+                 if paused else '<span class="ok">no</span>'),
+                ("day pnl", "%.2f" % c.get("day_pnl", 0)),
+                ("consecutive losses", c.get("consecutive_losses", 0)),
+                ("day date", c.get("day_date", "-")),
+            ]))
+        except Exception as e:
+            rows.append(card("Circuit breaker", [("error", p(e))]))
+
+        # --- portfolio ---
+        try:
+            sim = STATE["sim"]
+            wins = [t for t in sim["trades"] if t.get("pnl_pct", 0) > 0]
+            rows.append(card("Shadow portfolio", [
+                ("cash", "$%.2f" % sim.get("cash", 0)),
+                ("total pnl", '<span class="%s">$%.2f</span>' % (
+                    "ok" if sim.get("stats", {}).get("total_pnl", 0) >= 0 else "bad",
+                    sim.get("stats", {}).get("total_pnl", 0))),
+                ("open positions", len(sim.get("positions", []))),
+                ("trades", len(sim.get("trades", []))),
+                ("wins", "%d of %d sells" % (len(wins), sum(
+                    1 for t in sim["trades"] if t.get("action") == "SELL"))),
+            ]))
+        except Exception as e:
+            rows.append(card("Shadow portfolio", [("error", p(e))]))
+
+        # --- geckoterminal enrichment ---
+        try:
+            st = cohort_gt.gt_stats()
+            gp = os.path.join(BASE, "cohort_gt.csv")
+            nrows = max(0, sum(1 for _ in open(gp, encoding="utf-8")) - 1) \
+                if os.path.exists(gp) else 0
+            rows.append(card("GeckoTerminal enrichment", [
+                ("rows recorded", nrows),
+                ("calls ok", st.get("ok", 0)),
+                ("rate limited (429)", '<span class="%s">%d</span>' % (
+                    "ok" if st.get("429", 0) == 0 else "warn", st.get("429", 0))),
+                ("skipped in backoff", st.get("skipped_backoff", 0)),
+                ("last write", _age_str(_age(gp))),
+            ]))
+        except Exception as e:
+            rows.append(card("GeckoTerminal enrichment", [("error", p(e))]))
+
+        # --- data files ---
+        files = ["decisions.csv", "cohort.csv", "cohort_gt.csv",
+                 "trajectory.csv", "sim_portfolio.json", "server_run.log",
+                 "watchdog.log", "analysis_24h.txt", "bg_error.log"]
+        fr = []
+        for fn in files:
+            fp = os.path.join(BASE, fn)
+            if not os.path.exists(fp):
+                fr.append((fn, '<span class="warn">not created yet</span>'))
+                continue
+            try:
+                sz = os.path.getsize(fp)
+                fr.append((fn, "%.1f MB &middot; " % (sz / 1048576)
+                           + _age_str(_age(fp))))
+            except Exception:
+                fr.append((fn, "?"))
+        rows.append(card("Data files", fr))
+
+        # --- scheduled 24h run ---
+        rep = os.path.join(BASE, "analysis_24h.txt")
+        if os.path.exists(rep):
+            m = re.search(r"DONE\s+wrote .*?\((\d+) bytes\)",
+                          "\n".join(wd[-40:]))
+            state = ('done, ' + _age_str(_age(rep))) if m else \
+                    '<span class="warn">running or armed</span>'
+            rows.append(card("24h analysis", [
+                ("state", state),
+                ("report", '<a href="/ops/report">open analysis_24h.txt</a>'),
+            ]))
+        else:
+            rows.append(card("24h analysis", [
+                ("state", '<span class="warn">armed, fires 2026-10-01 20:05</span>')]))
+
+        # --- logs ---
+        log_html = ""
+        for title, path, n in (("server_run.log (last 40)", "server_run.log", 40),
+                               ("watchdog.log (last 15)", "watchdog.log", 15),
+                               ("bg_error.log (last 10)", "bg_error.log", 10)):
+            lines = _tail(os.path.join(BASE, path), n)
+            log_html += ("<div class=card><h3>%s</h3><pre>%s</pre></div>"
+                         % (p(title), p("\n".join(lines) or "(empty)")))
+
+        # NOTE: do not use %-formatting on this template. The CSS contains
+        # literal percent signs (width:100%) which %-formatting treats as
+        # format specifiers, and the route then dies with a bare 500 and an
+        # empty body. Token substitution only.
+        html = """<!doctype html><html><head><meta charset=utf-8>
+<title>dex-scanner ops</title><meta http-equiv=refresh content=15>
+<style>
+ body{background:#0d1117;color:#c9d1d9;font:14px/1.5 -apple-system,Segoe UI,Microsoft JhengHei,sans-serif;margin:0;padding:20px}
+ h1{font-size:20px;margin:0 0 4px} h3{font-size:13px;margin:0 0 10px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+ .sub{color:#8b949e;font-size:12px;margin-bottom:18px}
+ .grid{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+ .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;min-width:290px;flex:1;max-width:420px}
+ table{border-collapse:collapse;width:100%} td{padding:3px 0;vertical-align:top}
+ td:first-child{color:#8b949e;padding-right:12px;white-space:nowrap}
+ td.v{text-align:right;font-variant-numeric:tabular-nums}
+ .ok{color:#3fb950}.warn{color:#f0b429}.bad{color:#f85149}
+ .mono{font-family:ui-monospace,Consolas,monospace;font-size:11px}
+ pre{font-family:ui-monospace,Consolas,monospace;font-size:11px;white-space:pre-wrap;margin:0;max-height:300px;overflow:auto;color:#8b949e}
+ a{color:#58a6ff}
+</style></head><body>
+<h1>dex-scanner ops</h1>
+<div class=sub>auto-refresh 15s &middot; server time __TIME__ &middot; read-only</div>
+<div class=grid>__CARDS__</div>
+__LOGS__
+</body></html>"""
+        html = (html.replace("__TIME__",
+                             p(datetime.now(UTC8).strftime("%Y-%m-%d %H:%M:%S UTC+8")))
+                    .replace("__CARDS__", "".join(rows))
+                    .replace("__LOGS__", log_html))
+        return Response(html, mimetype="text/html")
+    except Exception:
+        import traceback
+        return Response("<pre>ops page error:\n" + traceback.format_exc()
+                        + "</pre>", mimetype="text/plain", status=500)
+
+
+@app.route("/ops/report")
+def ops_report():
+    p = os.path.join(BASE, "analysis_24h.txt")
+    if not os.path.exists(p):
+        return Response("analysis_24h.txt not written yet. The 24h runner fires "
+                        "at 2026-10-01 20:05.", mimetype="text/plain", status=404)
+    with open(p, "r", encoding="utf-8", errors="replace") as f:
+        return Response(f.read(), mimetype="text/plain")
+
 
 # ============ Routes ============
 @app.route("/api/dex")
